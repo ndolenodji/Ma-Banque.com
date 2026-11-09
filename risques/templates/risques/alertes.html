@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Alertes de fraude{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🚨 Alertes de fraude</h1>
+  <div class="barre-boutons">
+    <span class="badge badge-attente" id="badge-nouvelles">
+      Nouvelles : <strong id="compteur-nouvelles">{{ statistiques.nouvelles }}</strong>
+    </span>
+    <a href="{% url 'administration:tableau_de_bord' %}" class="bouton bouton-secondaire">Tableau de bord</a>
+  </div>
+</div>
+
+<div class="message info">
+  Le score est explicable et ne bloque aucun fonds automatiquement. Toute décision
+  (revue, confirmation, rejet) est humaine, motivée et journalisée.
+</div>
+
+<div class="grille-cartes">
+  <div class="carte carte-stat"><div class="icone bg-bleu">📋</div><div class="libelle">Alertes totales</div><div class="valeur">{{ statistiques.total }}</div></div>
+  <div class="carte carte-stat"><div class="icone bg-orange">🆕</div><div class="libelle">À traiter</div><div class="valeur">{{ statistiques.nouvelles }}</div></div>
+  <div class="carte carte-stat"><div class="icone bg-violet">🔎</div><div class="libelle">En revue</div><div class="valeur">{{ statistiques.en_revue }}</div></div>
+  <div class="carte carte-stat"><div class="icone bg-rouge">🔥</div><div class="libelle">Critiques ouvertes</div><div class="valeur">{{ statistiques.critiques }}</div></div>
+</div>
+
+<div class="carte">
+  <form method="get" class="filtres-ligne">
+    <div class="champ">
+      <label for="q">Recherche</label>
+      <input type="text" id="q" name="q" value="{{ recherche }}" placeholder="Référence, client, transaction…">
+    </div>
+    <div class="champ">
+      <label for="statut">Statut</label>
+      <select id="statut" name="statut">
+        <option value="">Tous</option>
+        {% for valeur, libelle in statuts %}
+          <option value="{{ valeur }}" {% if statut == valeur %}selected{% endif %}>{{ libelle }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="champ">
+      <label for="niveau">Niveau</label>
+      <select id="niveau" name="niveau">
+        <option value="">Tous</option>
+        {% for valeur, libelle in niveaux %}
+          <option value="{{ valeur }}" {% if niveau == valeur %}selected{% endif %}>{{ libelle }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="actions-filtre">
+      <button type="submit" class="bouton">Filtrer</button>
+      <a href="{% url 'risques:alertes' %}" class="bouton bouton-secondaire">Réinitialiser</a>
+    </div>
+  </form>
+</div>
+
+<div class="carte">
+  <div class="tableau-responsive">
+    <table class="tableau-donnees">
+      <thead>
+        <tr>
+          <th>Référence</th><th>Date</th><th>Client</th><th>Score</th><th>Niveau</th><th>Statut</th><th>Opération</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for alerte in alertes %}
+        <tr>
+          <td><strong>{{ alerte.reference }}</strong></td>
+          <td>{{ alerte.date_creation|date:"d/m/Y H:i" }}</td>
+          <td>{{ alerte.utilisateur.get_full_name|default:alerte.utilisateur.username }}</td>
+          <td><span class="score-fraude risque-{{ alerte.niveau|lower }}">{{ alerte.score }}/100</span></td>
+          <td><span class="badge risque-badge-{{ alerte.niveau|lower }}">{{ alerte.get_niveau_display }}</span></td>
+          <td><span class="badge badge-statut-{{ alerte.statut|lower }}">{{ alerte.get_statut_display }}</span></td>
+          <td>
+            {% if alerte.transaction %}
+              {{ alerte.transaction.reference }}<br>
+              <small>{{ alerte.transaction.montant|floatformat:0|intcomma }} FCFA</small>
+            {% elif alerte.paiement_mobile %}
+              {{ alerte.paiement_mobile.reference_transaction }}
+            {% else %}—{% endif %}
+          </td>
+          <td><a href="{% url 'risques:detail_alerte' alerte.pk %}" class="bouton bouton-secondaire bouton-petit">Instruire</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8">Aucune alerte ne correspond à ces critères.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj.has_other_pages %}
+    <div class="pagination">
+      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&statut={{ statut }}&niveau={{ niveau }}&q={{ recherche }}">‹ Précédent</a>{% endif %}
+      <span>Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&statut={{ statut }}&niveau={{ niveau }}&q={{ recherche }}">Suivant ›</a>{% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  const cible = document.getElementById("compteur-nouvelles");
+  if (!cible) return;
+  async function rafraichir() {
+    try {
+      const reponse = await fetch("{% url 'risques:alertes_non_lues_json' %}", {
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        credentials: "same-origin",
+      });
+      if (!reponse.ok) return;
+      const donnees = await reponse.json();
+      cible.textContent = donnees.nouvelles;
+      const badge = document.getElementById("badge-nouvelles");
+      if (badge) badge.classList.toggle("badge-rouge", donnees.nouvelles > 0);
+    } catch (erreur) {
+      /* le prochain cycle réessaiera */
+    }
+  }
+  setInterval(rafraichir, 20000);
+})();
+</script>
+{% endblock %}

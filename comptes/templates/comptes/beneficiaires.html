@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titre %}Mes bénéficiaires{% endblock %}
+{% block contenu %}
+<div class="page-titre"><h1>Mes bénéficiaires favoris</h1></div>
+
+<div style="display:grid; grid-template-columns:1fr 340px; gap:16px;">
+  <div class="carte">
+    {% if beneficiaires %}
+      <table class="tableau-donnees">
+        <thead><tr><th>Nom</th><th>Type</th><th>N° / portefeuille</th><th>Surnom</th><th></th></tr></thead>
+        <tbody>
+        {% for b in beneficiaires %}
+          <tr>
+            <td>{{ b.nom_complet }}</td>
+            <td>{{ b.get_type_beneficiaire_display }}{% if b.operateur %}<br><small>{{ b.operateur }}</small>{% endif %}</td>
+            <td>{{ b.numero_compte }}</td>
+            <td>{{ b.surnom|default:"-" }}</td>
+            <td>
+              <form method="post" action="{% url 'comptes:supprimer_beneficiaire' b.id %}" style="margin:0;" onsubmit="return confirm('Supprimer ce bénéficiaire ?');">
+                {% csrf_token %}
+                <button type="submit" class="bouton bouton-petit bouton-danger">Supprimer</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>Aucun bénéficiaire enregistré pour le moment.</p>
+    {% endif %}
+  </div>
+
+  <div class="carte">
+    <h3 style="margin-top:0;">Ajouter un bénéficiaire</h3>
+    <form method="post">
+      {% csrf_token %}
+      {% for champ in formulaire %}
+        <div class="groupe-champ">
+          <label>{{ champ.label }}</label>
+          {{ champ }}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton" style="width:100%;">Ajouter</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block titre %}Ticket {{ ticket.reference }}{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>{{ ticket.sujet }}</h1>
+  <a href="{% url 'support:mes_tickets' %}" class="bouton bouton-secondaire">← {% if est_personnel %}Tous les tickets{% else %}Mes tickets{% endif %}</a>
+</div>
+
+<div class="carte" style="margin-bottom:16px;">
+  <div class="entete-suivi">
+    <div>
+      <div class="texte-petit">Référence {{ ticket.reference }} — {{ ticket.get_categorie_display }}</div>
+      <div class="barre-boutons" style="margin-top:6px;">
+        {% if ticket.statut == "OUVERT" %}<span class="badge badge-info">Ouvert</span>
+        {% elif ticket.statut == "EN_COURS" %}<span class="badge badge-attente">En cours</span>
+        {% elif ticket.statut == "RESOLU" %}<span class="badge badge-succes">Résolu</span>
+        {% else %}<span class="badge badge-echec">Fermé</span>{% endif %}
+        {% if ticket.priorite == "URGENTE" %}<span class="badge badge-echec">Priorité urgente</span>
+        {% elif ticket.priorite == "HAUTE" %}<span class="badge badge-attente">Priorité haute</span>
+        {% else %}<span class="badge badge-info">Priorité {{ ticket.get_priorite_display|lower }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="texte-petit" style="text-align:right;">
+      Ouvert le {{ ticket.date_creation|date:"d/m/Y à H:i" }}<br>
+      {% if est_personnel %}Client : {{ ticket.client.get_full_name|default:ticket.client.username }}<br>{% endif %}
+      {% if ticket.assigne_a %}Assigné à {{ ticket.assigne_a.get_full_name|default:ticket.assigne_a.username }}{% else %}Non assigné{% endif %}
+    </div>
+  </div>
+
+  {% if not ticket.est_ouvert %}
+    <div class="message attention" style="margin-top:12px;">
+      Ce ticket est clôturé{% if ticket.date_cloture %} depuis le {{ ticket.date_cloture|date:"d/m/Y à H:i" }}{% endif %}.
+      {% if not est_personnel %}Ouvrez un nouveau ticket pour toute nouvelle demande.{% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<div class="grille-deux-colonnes">
+  <div>
+    <div class="fil-ticket">
+      {% for message in messages_ticket %}
+        <div class="message-ticket {% if message.est_note_interne %}note-interne{% endif %}">
+          <div class="entete-message">
+            <div>
+              <strong>{% if message.auteur %}{{ message.auteur.get_full_name|default:message.auteur.username }}{% else %}Auteur supprimé{% endif %}</strong>
+              {% if message.auteur_id == user.id %}<span class="badge badge-info">Vous</span>{% endif %}
+              {% if message.est_note_interne %}<span class="badge badge-attente">Note interne</span>{% endif %}
+            </div>
+            <span class="texte-petit">{{ message.date_creation|date:"d/m/Y à H:i" }}</span>
+          </div>
+          <div class="contenu-message">{{ message.message|linebreaks }}</div>
+        </div>
+      {% endfor %}
+    </div>
+
+    {% if ticket.est_ouvert or est_personnel %}
+      <div class="carte" style="margin-top:16px;">
+        <h3 class="premier-titre">Répondre</h3>
+        {% if formulaire.non_field_errors %}
+          <div class="message erreur">{{ formulaire.non_field_errors|join:" " }}</div>
+        {% endif %}
+        <form method="post">
+          {% csrf_token %}
+          <div class="groupe-champ">
+            <label for="{{ formulaire.message.id_for_label }}">{{ formulaire.message.label }}</label>
+            {{ formulaire.message }}
+            {% for erreur in formulaire.message.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+          </div>
+
+          {% if est_personnel %}
+            <div class="grille-deux-colonnes" style="gap:12px; margin-bottom:12px;">
+              <div class="groupe-champ" style="margin:0;">
+                <label for="{{ formulaire.statut.id_for_label }}">{{ formulaire.statut.label }}</label>
+                {{ formulaire.statut }}
+              </div>
+              <div class="groupe-champ" style="margin:0;">
+                <label for="{{ formulaire.priorite.id_for_label }}">{{ formulaire.priorite.label }}</label>
+                {{ formulaire.priorite }}
+              </div>
+            </div>
+            <div class="groupe-champ">
+              <label class="case-a-cocher" for="{{ formulaire.note_interne.id_for_label }}">
+                {{ formulaire.note_interne }} {{ formulaire.note_interne.label }}
+              </label>
+              <div class="texte-petit">Une note interne n'est jamais visible par le client et ne déclenche aucune notification.</div>
+            </div>
+          {% endif %}
+
+          <button type="submit" class="bouton">Publier le message</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+
+  <aside class="carte">
+    <h3 class="premier-titre">Suivi</h3>
+    <div class="regle-frais"><span>Dernière activité</span><strong>{{ ticket.date_mise_a_jour|date:"d/m/Y H:i" }}</strong></div>
+    <div class="regle-frais"><span>Nombre de messages</span><strong>{{ messages_ticket|length }}</strong></div>
+    <div class="regle-frais"><span>Catégorie</span><strong>{{ ticket.get_categorie_display }}</strong></div>
+    {% if est_personnel and ticket.client %}
+      <div class="regle-frais"><span>Client</span><strong>{{ ticket.client.get_full_name|default:ticket.client.username }}</strong></div>
+      <div class="regle-frais"><span>Téléphone</span><strong>{{ ticket.client.telephone }}</strong></div>
+    {% endif %}
+
+    {% if ticket.est_ouvert %}
+      <form method="post" action="{% url 'support:cloturer_ticket' ticket.pk %}" style="margin-top:14px;">
+        {% csrf_token %}
+        <button type="submit" class="bouton bouton-secondaire lien-danger" style="width:100%;">
+          Clôturer ce ticket
+        </button>
+      </form>
+      <p class="texte-petit" style="margin-top:8px;">
+        La clôture est définitive pour ce fil. Vous pourrez toujours ouvrir un nouveau ticket.
+      </p>
+    {% endif %}
+
+    <div class="encart-info" style="margin-top:14px;">
+      Pour votre sécurité, ne communiquez jamais votre mot de passe, votre PIN ou un code
+      de double authentification, même à un agent du support.
+    </div>
+  </aside>
+</div>
+{% endblock %}

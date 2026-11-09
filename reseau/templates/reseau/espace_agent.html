@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Console agent{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🏪 Console agent — {{ profil.nom_agence }}</h1>
+  <a href="{% url 'reseau:annuaire_agents' %}" class="bouton bouton-secondaire">Annuaire des agents</a>
+</div>
+
+<div class="message info">
+  <strong>Simulation de caisse :</strong> les dépôts et retraits au guichet déplacent des fonds entre
+  comptes internes de la maquette et le float de caisse de l'agent. Aucune espèces réelle n'est manipulée.
+</div>
+
+<div class="grille-cartes">
+  <div class="carte carte-stat">
+    <div class="icone bg-bleu">🏦</div>
+    <div class="valeur">{{ profil.float_caisse|floatformat:0|intcomma }} FCFA</div>
+    <div class="libelle">Float de caisse disponible</div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="icone bg-vert">📈</div>
+    <div class="valeur">{{ total_jour|floatformat:0|intcomma }} FCFA</div>
+    <div class="libelle">Volume réalisé aujourd'hui</div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="icone bg-orange">🧮</div>
+    <div class="valeur">{{ reste_jour|floatformat:0|intcomma }} FCFA</div>
+    <div class="libelle">Reste du plafond journalier</div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="icone bg-violet">🧾</div>
+    <div class="valeur">{{ operations_jour|length }}</div>
+    <div class="libelle">Opérations enregistrées aujourd'hui</div>
+  </div>
+</div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte formulaire-carte" style="max-width:none; margin:0;">
+    <h3 class="premier-titre">Nouvelle opération de caisse</h3>
+    <p class="texte-petit">
+      Agent {{ profil.code_agent }} — {{ profil.ville|default:"ville non renseignée" }}.
+      Le numéro de compte client est vérifié avant tout mouvement.
+    </p>
+    {% if formulaire.non_field_errors %}
+      <div class="message erreur">{{ formulaire.non_field_errors|join:" " }}</div>
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="cle_idempotence" value="{{ cle_idempotence }}">
+      {% for champ in formulaire %}
+        <div class="groupe-champ">
+          <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+          {{ champ }}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton" style="width:100%;">Enregistrer l'opération</button>
+    </form>
+  </div>
+
+  <aside class="carte">
+    <h3 class="premier-titre">Règles de caisse</h3>
+    <ul class="texte-petit" style="line-height:1.9; padding-left:18px;">
+      <li>Un dépôt (cash-in) augmente le solde du client et le float de l'agent.</li>
+      <li>Un retrait (cash-out) débite le client et diminue le float de l'agent.</li>
+      <li>Le float doit être suffisant pour un retrait.</li>
+      <li>Le plafond journalier de l'agent s'applique au cumul des opérations.</li>
+      <li>Le compte client doit être actif et respecter ses propres plafonds.</li>
+    </ul>
+    <div class="encart-info">
+      Le journal d'audit et le reçu PDF permettent de tracer chaque opération.
+      Aucune commission d'agent n'est simulée sans grille tarifaire dédiée.
+    </div>
+  </aside>
+</div>
+
+<div class="carte" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Dernières opérations</h3>
+  <div class="tableau-defilement">
+    <table class="tableau-donnees">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Référence</th>
+          <th>Client</th>
+          <th>Compte</th>
+          <th>Opération</th>
+          <th>Montant</th>
+          <th>Reçu</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for operation in operations %}
+          <tr>
+            <td>{{ operation.date_operation|date:"d/m/Y H:i" }}</td>
+            <td>{{ operation.reference }}</td>
+            <td>{{ operation.client.get_full_name|default:operation.client.username }}</td>
+            <td>{{ operation.compte.numero_compte }}</td>
+            <td>{{ operation.get_type_operation_display }}</td>
+            <td>{{ operation.montant|floatformat:0|intcomma }} FCFA</td>
+            <td>
+              {% if operation.transaction_id %}
+                <a class="lien-inline" href="{% url 'transactions:telecharger_recu' operation.transaction_id %}">PDF</a>
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7">Aucune opération de caisse enregistrée pour le moment.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titre %}Codes de secours{% endblock %}
+{% block contenu %}
+<div class="carte" style="max-width:620px; margin:0 auto;">
+  <h1 style="font-size:1.3rem;">🔑 Vos codes de secours</h1>
+  <div class="message attention">
+    Conservez ces 10 codes en lieu sûr, hors de votre téléphone. Ils permettent de vous connecter
+    si vous perdez l'accès à votre application d'authentification. Chaque code ne peut être utilisé qu'une fois.
+    <strong>Ils ne seront plus jamais affichés.</strong>
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:18px 0; font-family:monospace; font-size:1.05rem;">
+    {% for code in codes %}
+      <div style="background:var(--bleu-clair); padding:10px 12px; border-radius:8px; text-align:center;">{{ code }}</div>
+    {% endfor %}
+  </div>
+  <a href="{% url 'comptes:parametres' %}" class="bouton" style="width:100%; text-align:center;">J'ai conservé mes codes</a>
+</div>
+{% endblock %}

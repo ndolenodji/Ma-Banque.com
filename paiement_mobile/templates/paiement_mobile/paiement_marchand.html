@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block titre %}Paiement marchand — QR Code{% endblock %}
+{% block contenu %}
+<div class="page-titre"><h1>🧾 Paiement marchand par QR Code</h1></div>
+<div class="message info">
+  Fonctionnalité bonus, signalée comme optionnelle au cahier des charges. Le QR code ci-dessous
+  est réel et scannable, mais le <strong>flux de paiement marchand reste simulé</strong> à des fins
+  de démonstration académique : aucun terminal marchand réel n'est connecté.
+</div>
+
+<div class="carte formulaire-carte">
+  <form method="post">
+    {% csrf_token %}
+    <div class="groupe-champ">
+      <label>Compte à débiter lors du scan</label>
+      <select name="compte_bancaire">
+        {% for compte in comptes %}
+          <option value="{{ compte.id }}">{{ compte.get_type_compte_display }} — N° {{ compte.numero_compte }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="groupe-champ">
+      <label>Montant à demander (FCFA)</label>
+      <input type="number" name="montant" min="1" step="1" required>
+    </div>
+    <button type="submit" class="bouton" style="width:100%;">Générer le QR code</button>
+  </form>
+
+  {% if reference_qr %}
+    <div style="text-align:center; margin-top:20px;">
+      <img src="{{ qr_data_uri }}" alt="QR code de paiement marchand {{ reference_qr }}"
+           width="240" height="240" style="max-width:100%; height:auto;">
+      <p style="margin-top:10px; font-size:0.85rem;">Référence : <strong>{{ reference_qr }}</strong> — Montant demandé : {{ montant_qr }} FCFA</p>
+      <p class="texte-petit">Ce QR réel est scannable ; il ne déclenche encore aucun paiement automatique dans cette démonstration.</p>
+    </div>
+  {% endif %}
+  <p style="margin-top:16px; text-align:center;">
+    <a href="{% url 'paiement_mobile:mon_code_qr' %}" class="bouton bouton-secondaire bouton-petit">🔳 Voir aussi mon QR personnel</a>
+  </p>
+</div>
+{% endblock %}

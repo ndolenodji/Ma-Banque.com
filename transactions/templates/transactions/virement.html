@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Effectuer un virement{% endblock %}
+{% block contenu %}
+<a href="{% url 'transactions:virements_programmes' %}" class="lien-retour">← Gérer mes virements programmés</a>
+<div class="page-titre"><h1>🔁 Effectuer un virement</h1></div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte formulaire-carte" style="margin:0; max-width:none;">
+    <form method="post">
+      {% csrf_token %}
+      {% for champ in formulaire.hidden_fields %}{{ champ }}{% endfor %}
+      {% for erreur in formulaire.non_field_errors %}<div class="message erreur">{{ erreur }}</div>{% endfor %}
+      {% for champ in formulaire.visible_fields %}
+        <div class="groupe-champ">
+          <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+          {{ champ }}
+          {% if champ.help_text %}<div class="aide">{{ champ.help_text }}</div>{% endif %}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton" style="width:100%;">Confirmer le virement</button>
+    </form>
+    <datalist id="beneficiaires-virement">
+      {% for beneficiaire in beneficiaires %}
+        <option value="{{ beneficiaire.numero_compte }}">{{ beneficiaire.surnom|default:beneficiaire.nom_complet }}</option>
+      {% endfor %}
+    </datalist>
+  </div>
+
+  <div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Bénéficiaires bancaires</h3>
+      {% for beneficiaire in beneficiaires %}
+        <div class="regle-frais">
+          <span>
+            <strong>{{ beneficiaire.surnom|default:beneficiaire.nom_complet }}</strong><br>
+            <span class="texte-petit">n° {{ beneficiaire.numero_compte }}</span>
+          </span>
+          <a href="{% url 'transactions:virement' %}?beneficiaire={{ beneficiaire.id }}" class="bouton bouton-petit bouton-secondaire">Préremplir</a>
+        </div>
+      {% empty %}
+        <p class="texte-petit" style="margin-bottom:8px;">Aucun bénéficiaire bancaire enregistré.</p>
+        <a href="{% url 'comptes:beneficiaires' %}" class="bouton bouton-petit bouton-secondaire">Ajouter un bénéficiaire</a>
+      {% endfor %}
+    </div>
+
+    <div class="carte">
+      <h3 class="premier-titre">Frais de virement</h3>
+      {% for regle in regles_frais %}
+        <div class="regle-frais">
+          <span>
+            {{ regle.libelle }}
+            {% if regle.taux_pourcentage %}— {{ regle.taux_pourcentage }} %{% endif %}
+            {% if regle.frais_fixe %}+ {{ regle.frais_fixe|floatformat:0|intcomma }} FCFA{% endif %}
+          </span>
+          <span>
+            {% if regle.frais_minimum %}<span class="badge badge-info">min {{ regle.frais_minimum|floatformat:0|intcomma }}</span>{% endif %}
+            {% if regle.frais_maximum %}<span class="badge badge-info">max {{ regle.frais_maximum|floatformat:0|intcomma }}</span>{% endif %}
+          </span>
+        </div>
+      {% empty %}
+        <p class="texte-petit" style="margin-bottom:0;">Aucun frais de virement n'est actuellement configuré.</p>
+      {% endfor %}
+      <p class="texte-petit" style="margin-bottom:0; margin-top:12px;">
+        Virement immédiat entre comptes de même devise. Pour une autre devise,
+        utilisez la conversion de devises. Les plafonds du compte source s'appliquent.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

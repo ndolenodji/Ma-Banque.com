@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block titre %}Devenir marchand{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🛍️ Devenir marchand partenaire</h1>
+  <a href="{% url 'reseau:espace_marchand' %}" class="bouton bouton-secondaire">← Mon espace marchand</a>
+</div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte formulaire-carte" style="max-width:none; margin:0;">
+    <h3 class="premier-titre">Votre établissement</h3>
+    {% if formulaire.non_field_errors %}
+      <div class="message erreur">{{ formulaire.non_field_errors|join:" " }}</div>
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      {% for champ in formulaire %}
+        <div class="groupe-champ">
+          <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+          {{ champ }}
+          {% if champ.help_text %}<div class="texte-petit">{{ champ.help_text }}</div>{% endif %}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton" style="width:100%;">Envoyer ma demande d'adhésion</button>
+    </form>
+  </div>
+
+  <aside class="carte">
+    <h3 class="premier-titre">Avant de commencer</h3>
+    <ul class="texte-petit" style="line-height:1.9; padding-left:18px;">
+      <li>Votre dossier KYC doit être approuvé.</li>
+      <li>Le compte de règlement doit être un compte bancaire actif vous appartenant.</li>
+      <li>La banque valide la demande avant l'activation de l'encaissement.</li>
+      <li>Un code marchand unique est généré automatiquement.</li>
+    </ul>
+    <h3>Que se passe-t-il ensuite ?</h3>
+    <p class="texte-petit">
+      Une fois activé, vous pourrez créer des demandes de paiement avec un montant et une durée de validité.
+      Chaque demande produit un QR code réel encodant un lien sécurisé vers cette application.
+    </p>
+    <div class="encart-info">
+      Aucun terminal de paiement, aucune carte et aucun acquéreur externe ne sont connectés :
+      les règlements restent internes à la démonstration.
+    </div>
+    <p class="texte-petit" style="margin-top:12px;">
+      Besoin d'aide ? Consultez la <a href="{% url 'support:faq' %}">FAQ</a> ou ouvrez un
+      <a href="{% url 'support:creer_ticket' %}">ticket au support</a>.
+    </p>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Historique des transactions{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🕐 Historique des transactions</h1>
+  <a href="{% url 'transactions:releves' %}" class="bouton bouton-secondaire">📄 Relevés et exports</a>
+</div>
+
+<div class="carte" style="margin-bottom:16px;">
+  <form method="get" style="display:flex; gap:12px; flex-wrap:wrap; align-items:end;">
+    {% if recherche %}<input type="hidden" name="recherche" value="{{ recherche }}">{% endif %}
+    <div class="groupe-champ" style="flex:1; min-width:150px; margin-bottom:0;">
+      <label for="{{ formulaire.date_debut.id_for_label }}">{{ formulaire.date_debut.label }}</label>
+      {{ formulaire.date_debut }}
+    </div>
+    <div class="groupe-champ" style="flex:1; min-width:150px; margin-bottom:0;">
+      <label for="{{ formulaire.date_fin.id_for_label }}">{{ formulaire.date_fin.label }}</label>
+      {{ formulaire.date_fin }}
+    </div>
+    <div class="groupe-champ" style="flex:1; min-width:150px; margin-bottom:0;">
+      <label for="{{ formulaire.type_transaction.id_for_label }}">{{ formulaire.type_transaction.label }}</label>
+      {{ formulaire.type_transaction }}
+    </div>
+    <div class="groupe-champ" style="flex:1; min-width:150px; margin-bottom:0;">
+      <label for="{{ formulaire.montant_min.id_for_label }}">{{ formulaire.montant_min.label }}</label>
+      {{ formulaire.montant_min }}
+    </div>
+    <button type="submit" class="bouton">Filtrer</button>
+  </form>
+  {% if recherche %}<p style="margin:10px 0 0; font-size:0.85rem;">Résultats pour « {{ recherche }} » — <a href="{% url 'transactions:historique' %}">réinitialiser</a></p>{% endif %}
+</div>
+
+<div class="carte">
+  <div class="tableau-defilement">
+    <table class="tableau-donnees">
+      <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Référence</th><th>Montant</th><th>Frais</th><th>Statut</th><th></th></tr></thead>
+      <tbody>
+      {% for t in transactions %}
+        <tr>
+          <td>{{ t.date_transaction|date:"d/m/Y H:i" }}</td>
+          <td>{{ t.get_type_transaction_display }}</td>
+          <td>{{ t.description|default:"-" }}</td>
+          <td class="texte-petit">{{ t.reference }}</td>
+          <td>{{ t.montant|floatformat:2|intcomma }} {{ t.devise|default:"XAF" }}</td>
+          <td>{% if t.frais %}{{ t.frais|floatformat:2|intcomma }}{% else %}—{% endif %}</td>
+          <td>
+            {% if t.statut == "REUSSIE" %}<span class="badge badge-succes">Réussie</span>
+            {% elif t.statut == "EN_ATTENTE" %}<span class="badge badge-attente">En attente</span>
+            {% elif t.statut == "REMBOURSEE" %}<span class="badge badge-info">Remboursée</span>
+            {% else %}<span class="badge badge-echec">{{ t.get_statut_display }}</span>{% endif %}
+          </td>
+          <td><a href="{% url 'transactions:telecharger_recu' t.id %}" class="bouton bouton-petit bouton-secondaire">Reçu</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8">Aucune transaction ne correspond à ces critères.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

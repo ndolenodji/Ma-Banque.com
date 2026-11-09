@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block titre %}Supervision des clients{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>👥 Supervision des clients</h1>
+  <div class="barre-boutons">
+    {% if user.est_administrateur %}
+      <a href="{% url 'administration:creer_client' %}" class="bouton">➕ Créer un client</a>
+    {% endif %}
+  </div>
+</div>
+
+<form method="get" class="carte" style="display:flex; gap:10px; margin-bottom:16px;">
+  <input type="text" name="q" value="{{ recherche }}" placeholder="Rechercher un client (nom, e-mail, téléphone...)" style="flex:1; padding:10px; border-radius:10px; border:1px solid #dbe2f0;">
+  <button type="submit" class="bouton">Rechercher</button>
+</form>
+
+<div class="carte">
+  <table class="tableau-donnees">
+    <thead><tr><th>Nom complet</th><th>Identifiant</th><th>Téléphone</th><th>KYC</th><th>Statut</th><th></th></tr></thead>
+    <tbody>
+    {% for client in clients %}
+      <tr>
+        <td>{{ client.get_full_name|default:"-" }}</td>
+        <td>{{ client.username }}</td>
+        <td>{{ client.telephone }}</td>
+        <td>{% if client.identite_verifiee %}<span class="badge badge-succes">Vérifiée</span>{% else %}<span class="badge badge-attente">En attente</span>{% endif %}</td>
+        <td>{% if client.est_actif_bancaire %}<span class="badge badge-succes">Actif</span>{% else %}<span class="badge badge-echec">Bloqué</span>{% endif %}</td>
+        <td><a href="{% url 'administration:detail_client' client.id %}" class="bouton bouton-petit bouton-secondaire">Voir</a></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6">Aucun client trouvé.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

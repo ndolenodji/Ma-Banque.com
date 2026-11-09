@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block titre %}Simulateur USSD{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>📞 Simulateur USSD</h1>
+  <div class="barre-boutons">
+    <a href="{% url 'support:faq' %}" class="bouton bouton-secondaire">❓ Aide</a>
+    <a href="{% url 'comptes:tableau_de_bord' %}" class="bouton bouton-secondaire">🏠 Tableau de bord</a>
+  </div>
+</div>
+
+<div class="message info">
+  <strong>Simulation :</strong> ce canal reproduit un menu téléphone dans votre session web sécurisée.
+  Aucun appel USSD, SMS ou passerelle opérateur réel n'est utilisé. Aucun code PIN n'est demandé :
+  l'authentification est celle de votre session.
+</div>
+
+<div class="conteneur-ussd">
+  <div class="telephone-ussd">
+    <div class="ecran-ussd">
+      <div class="entete-ussd">
+        <span>Ma Banque</span>
+        <span>USSD simulé</span>
+      </div>
+
+      {% if etat == "accueil" %}
+        <div class="code-ussd">*123#</div>
+        <p class="texte-ussd">Composez le code pour accéder au menu de votre compte.</p>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="composer">
+          <button type="submit" class="bouton-ussd bouton-ussd-principal">📞 Composer *123#</button>
+        </form>
+      {% elif etat == "quitte" %}
+        <div class="message-ussd">
+          Session terminée.<br>Merci d'avoir utilisé Ma Banque.
+        </div>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="composer">
+          <button type="submit" class="bouton-ussd">Recomposer *123#</button>
+        </form>
+      {% elif etat == "menu" %}
+        <div class="titre-ussd">Menu principal</div>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="choix">
+          <button type="submit" name="choix" value="1" class="bouton-ussd">1. Consulter le solde</button>
+          <button type="submit" name="choix" value="2" class="bouton-ussd">2. Mini-relevé (5 dernières opérations)</button>
+          <button type="submit" name="choix" value="3" class="bouton-ussd">3. Mes cartes</button>
+          <button type="submit" name="choix" value="4" class="bouton-ussd">4. Aide et support</button>
+        </form>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="quitter">
+          <button type="submit" class="bouton-ussd bouton-ussd-quitter">0. Quitter</button>
+        </form>
+      {% else %}
+        <div class="titre-ussd">
+          {% if etat == "solde" %}Solde de mes comptes
+          {% elif etat == "releve" %}Mini-relevé
+          {% elif etat == "cartes" %}Mes cartes
+          {% else %}Aide et support{% endif %}
+        </div>
+        <div class="contenu-ussd">
+          {% for ligne in lignes %}
+            <div class="ligne-ussd">{{ ligne|linebreaksbr }}</div>
+          {% endfor %}
+        </div>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="retour">
+          <button type="submit" class="bouton-ussd">0. Retour au menu</button>
+        </form>
+      {% endif %}
+    </div>
+    <div class="clavier-ussd" aria-hidden="true">
+      <span>1</span><span>2</span><span>3</span>
+      <span>4</span><span>5</span><span>6</span>
+      <span>7</span><span>8</span><span>9</span>
+      <span>*</span><span>0</span><span>#</span>
+    </div>
+  </div>
+
+  <aside class="carte">
+    <h3 class="premier-titre">À propos de ce canal</h3>
+    <ul class="texte-petit" style="line-height:1.9; padding-left:18px;">
+      <li>Le menu est navigable avec les boutons de l'écran ci-contre.</li>
+      <li>Les données affichées sont celles de votre compte connecté.</li>
+      <li>Une intégration USSD réelle exigerait un agrégateur télécom, un numéro court et une authentification par code dédié.</li>
+      <li>Aucune opération financière n'est exécutée depuis ce simulateur.</li>
+    </ul>
+    <div class="encart-info">
+      Ce simulateur permet de démontrer l'ergonomie du canal téléphone sans exposer
+      de mot de passe, de PIN ou de secret d'authentification.
+    </div>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}{{ client.get_full_name }} — Détail{% endblock %}
+{% block contenu %}
+<a href="{% url 'administration:supervision_clients' %}" class="lien-retour">← Retour à la liste des clients</a>
+<div class="page-titre"><h1>{{ client.get_full_name|default:client.username }}</h1></div>
+
+<div class="carte" style="margin-bottom:16px;">
+  <p><strong>Identifiant :</strong> {{ client.username }} — <strong>E-mail :</strong> {{ client.email }} — <strong>Téléphone :</strong> {{ client.telephone }}</p>
+  <p><strong>Pièce d'identité :</strong> {{ client.numero_piece_identite|default:"-" }} —
+    {% if client.identite_verifiee %}<span class="badge badge-succes">KYC vérifié</span>{% else %}<span class="badge badge-attente">KYC en attente</span>{% endif %}</p>
+  <p><strong>Statut du compte utilisateur :</strong>
+    {% if client.est_actif_bancaire %}<span class="badge badge-succes">Actif</span>{% else %}<span class="badge badge-echec">Bloqué</span>{% endif %}
+    <span style="font-size:0.8rem; color:var(--gris-texte);">(modifiable dans l'admin Django natif)</span>
+  </p>
+</div>
+
+<div class="carte">
+  <h3 style="margin-top:0;">Comptes bancaires</h3>
+  <table class="tableau-donnees">
+    <thead><tr><th>N° compte</th><th>Type</th><th>Solde</th><th>Statut</th><th></th></tr></thead>
+    <tbody>
+    {% for compte in comptes %}
+      <tr>
+        <td>{{ compte.numero_compte }}</td>
+        <td>{{ compte.get_type_compte_display }}</td>
+        <td>{{ compte.solde|floatformat:0|intcomma }} FCFA</td>
+        <td>{% if compte.statut == "ACTIF" %}<span class="badge badge-succes">Actif</span>{% else %}<span class="badge badge-echec">{{ compte.get_statut_display }}</span>{% endif %}</td>
+        <td>
+          {% if compte.statut == "ACTIF" %}
+            <form method="post" action="{% url 'administration:bloquer_compte' compte.id %}" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="motif" value="Fraude suspectée (blocage manuel administrateur)">
+              <button type="submit" class="bouton bouton-petit bouton-danger">Bloquer</button>
+            </form>
+          {% else %}
+            <form method="post" action="{% url 'administration:debloquer_compte' compte.id %}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="bouton bouton-petit">Débloquer</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5">Aucun compte bancaire.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if user.est_administrateur %}
+  <form method="post" action="{% url 'administration:ouvrir_compte_client' client.id %}"
+        style="margin-top:16px; padding-top:16px; border-top:1px solid #eef1f8; display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+    {% csrf_token %}
+    <div class="groupe-champ" style="margin:0; min-width:220px;">
+      <label for="{{ formulaire_compte.type_compte.id_for_label }}">Nouveau compte — type</label>
+      {{ formulaire_compte.type_compte }}
+    </div>
+    <div class="groupe-champ" style="margin:0; min-width:180px;">
+      <label for="{{ formulaire_compte.devise.id_for_label }}">Devise</label>
+      {{ formulaire_compte.devise }}
+    </div>
+    <button type="submit" class="bouton bouton-petit">Ouvrir un compte</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

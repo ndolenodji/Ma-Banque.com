@@ -1,0 +1,13 @@
+Bonjour {{ utilisateur.get_full_name|default:utilisateur.username }},
+
+Vous avez demandé la réinitialisation de votre mot de passe sur Ma Banque.
+
+Pour définir un nouveau mot de passe, ouvrez ce lien :
+{{ lien }}
+
+Ce lien est valable {{ validite_minutes }} minutes et ne peut être utilisé qu'une seule fois.
+Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.
+
+Pour votre sécurité, ne transmettez jamais ce lien à une tierce personne.
+
+— Ma Banque (message automatique, merci de ne pas répondre)

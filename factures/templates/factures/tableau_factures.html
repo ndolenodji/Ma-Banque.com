@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Mes factures{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🧾 Factures</h1>
+  <div class="barre-boutons">
+    <a href="{% url 'factures:ajouter_facture' %}" class="bouton">➕ Enregistrer une facture</a>
+  </div>
+</div>
+
+<div class="encart-info" style="margin-bottom:16px;">
+  🧪 <strong>Fournisseurs simulés.</strong>
+  Aucune facture externe réelle n'est réglée. Le paiement débite réellement votre compte
+  et trace la transaction, avec la mention « simulation ».
+</div>
+
+<div class="grille-cartes">
+  <div class="carte carte-stat">
+    <div class="icone bg-orange">⏳</div>
+    <div class="valeur">{{ total_a_payer|floatformat:0|intcomma }} FCFA</div>
+    <div class="libelle">Factures en attente</div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="icone bg-vert">✅</div>
+    <div class="valeur">{{ total_paye_mois|floatformat:0|intcomma }} FCFA</div>
+    <div class="libelle">Payé ce mois</div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="icone bg-rouge">⚠️</div>
+    <div class="valeur">{{ nombre_en_retard }}</div>
+    <div class="libelle">Facture{{ nombre_en_retard|pluralize }} en retard</div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="icone bg-bleu">🏢</div>
+    <div class="valeur">{{ fournisseurs|length }}</div>
+    <div class="libelle">Fournisseurs de démonstration</div>
+  </div>
+</div>
+
+<div class="disposition-tableau-bord">
+  <div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Factures à payer</h3>
+      <div class="tableau-defilement">
+        <table class="tableau-donnees">
+          <thead><tr><th>Référence</th><th>Fournisseur</th><th>Échéance</th><th>Montant</th><th>Statut</th><th></th></tr></thead>
+          <tbody>
+          {% for facture in factures_en_attente %}
+            <tr>
+              <td>
+                <strong>{{ facture.reference }}</strong>
+                {% if facture.libelle %}<div class="texte-petit">{{ facture.libelle }}</div>{% endif %}
+              </td>
+              <td>{{ facture.fournisseur.nom }}</td>
+              <td>
+                {{ facture.date_echeance|date:"d/m/Y" }}
+                {% if facture.est_en_retard %}<div><span class="badge badge-echec">En retard</span></div>{% endif %}
+              </td>
+              <td>{{ facture.montant|floatformat:0|intcomma }} FCFA</td>
+              <td><span class="badge badge-attente">En attente</span></td>
+              <td><a href="{% url 'factures:detail_facture' facture.pk %}" class="lien-inline">Payer</a></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6">Aucune facture en attente.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="carte">
+      <h3 class="premier-titre">Dernières factures payées</h3>
+      <div class="tableau-defilement">
+        <table class="tableau-donnees">
+          <thead><tr><th>Référence</th><th>Fournisseur</th><th>Payée le</th><th>Montant</th><th>Reçu</th></tr></thead>
+          <tbody>
+          {% for facture in factures_payees %}
+            <tr>
+              <td>{{ facture.reference }}</td>
+              <td>{{ facture.fournisseur.nom }}</td>
+              <td>{{ facture.date_paiement|date:"d/m/Y H:i" }}</td>
+              <td>{{ facture.montant|floatformat:0|intcomma }} FCFA</td>
+              <td>
+                {% if facture.transaction %}
+                <a href="{% url 'transactions:telecharger_recu' facture.transaction.pk %}" class="lien-inline">PDF</a>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5">Aucune facture payée pour le moment.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Références mémorisées</h3>
+      {% for reference in references %}
+        <div class="regle-frais">
+          <span>{{ reference.fournisseur.nom }}</span>
+          <strong>{{ reference.reference_client }}</strong>
+        </div>
+      {% empty %}
+        <p class="texte-petit" style="margin-bottom:0;">Aucune référence enregistrée. Saisissez votre référence client lors de l'ajout d'une facture.</p>
+      {% endfor %}
+    </div>
+    <div class="carte">
+      <h3 class="premier-titre">Fournisseurs disponibles</h3>
+      {% for fournisseur in fournisseurs %}
+        <div class="regle-frais">
+          <span>{{ fournisseur.nom }}</span>
+          <span class="badge badge-info">{{ fournisseur.get_categorie_display }}</span>
+        </div>
+      {% empty %}
+        <p class="texte-petit" style="margin-bottom:0;">Aucun fournisseur actif.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

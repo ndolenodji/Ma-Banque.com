@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titre %}Connexion — Ma Banque{% endblock %}
+{% block contenu %}
+<div class="page-authentification">
+  <div class="carte">
+    <div class="logo-auth">🏦 Ma Banque</div>
+    {% if messages %}
+      <div class="messages-flash">
+        {% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}
+      </div>
+    {% endif %}
+    <form method="post" class="formulaire-carte">
+      {% csrf_token %}
+      <div class="groupe-champ">
+        <label for="id_identifiant">Identifiant ou e-mail</label>
+        {{ formulaire.identifiant }}
+        {% for erreur in formulaire.identifiant.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+      </div>
+      <div class="groupe-champ">
+        <label for="id_mot_de_passe">Mot de passe</label>
+        {{ formulaire.mot_de_passe }}
+        {% for erreur in formulaire.mot_de_passe.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+      </div>
+      <button type="submit" class="bouton" style="width:100%;">Se connecter</button>
+    </form>
+    <p style="text-align:center; margin-top:16px; font-size:0.88rem;">
+      <a href="{% url 'comptes:reinitialisation_demande' %}">Mot de passe oublié ?</a>
+    </p>
+    <p style="text-align:center; font-size:0.88rem;">
+      Pas encore de compte ? <a href="{% url 'comptes:inscription' %}"><strong>Ouvrir un compte</strong></a>
+    </p>
+  </div>
+</div>
+{% endblock %}

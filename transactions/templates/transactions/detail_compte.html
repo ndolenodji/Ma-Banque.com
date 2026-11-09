@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Détail du compte{% endblock %}
+{% block contenu %}
+<a href="{% url 'transactions:liste_comptes' %}" class="lien-retour">← Retour à mes comptes</a>
+<div class="page-titre">
+  <h1>{{ compte.get_type_compte_display }} — N° {{ compte.numero_compte }}</h1>
+  <div class="barre-boutons">
+    <a href="{% url 'transactions:releves' %}" class="bouton bouton-secondaire">📄 Relevés</a>
+    <a href="{% url 'transactions:deposer' %}" class="bouton bouton-petit">Déposer</a>
+    <a href="{% url 'transactions:retirer' %}" class="bouton bouton-petit">Retirer</a>
+    <a href="{% url 'transactions:virement' %}" class="bouton bouton-petit">Virement</a>
+  </div>
+</div>
+
+<div class="grille-cartes">
+  <div class="carte carte-stat">
+    <div class="icone bg-bleu">💰</div>
+    <div class="libelle">Solde comptable</div>
+    <div class="valeur">{{ compte.solde|floatformat:2|intcomma }} {{ compte.code_devise }}</div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="icone bg-vert">✅</div>
+    <div class="libelle">Solde disponible</div>
+    <div class="valeur">{{ compte.solde_disponible|floatformat:2|intcomma }} {{ compte.code_devise }}</div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="icone bg-orange">🔒</div>
+    <div class="libelle">Montants bloqués / en attente</div>
+    <div class="valeur">{{ compte.solde_bloque|add:compte.solde_en_attente|floatformat:2|intcomma }} {{ compte.code_devise }}</div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="icone {% if compte.statut == 'ACTIF' %}bg-vert{% else %}bg-rouge{% endif %}">🛡️</div>
+    <div class="libelle">Statut</div>
+    <div class="valeur">{{ compte.get_statut_display }}</div>
+  </div>
+</div>
+
+{% if compte.motif_blocage %}
+  <div class="message erreur">Motif du blocage : {{ compte.motif_blocage }}</div>
+{% endif %}
+
+<div class="carte" style="margin-bottom:16px;">
+  <div class="regle-frais"><span>Plafond journalier</span><strong>{{ compte.plafond_journalier|floatformat:0|intcomma }} {{ compte.code_devise }}</strong></div>
+  <div class="regle-frais"><span>Plafond hebdomadaire</span><strong>{{ compte.plafond_hebdomadaire|floatformat:0|intcomma }} {{ compte.code_devise }}</strong></div>
+  <div class="regle-frais"><span>Plafond mensuel</span><strong>{{ compte.plafond_mensuel|floatformat:0|intcomma }} {{ compte.code_devise }}</strong></div>
+</div>
+
+<div class="carte">
+  <h3 class="premier-titre">Mouvements récents</h3>
+  <div class="tableau-defilement">
+    <table class="tableau-donnees">
+      <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Référence</th><th>Débit</th><th>Crédit</th><th>Frais</th><th>Statut</th><th></th></tr></thead>
+      <tbody>
+      {% for t in transactions %}
+        <tr>
+          <td>{{ t.date_transaction|date:"d/m/Y H:i" }}</td>
+          <td>{{ t.get_type_transaction_display }}</td>
+          <td>{{ t.description|default:"-" }}</td>
+          <td class="texte-petit">{{ t.reference }}</td>
+          <td>
+            {% if t.compte_source_id == compte.id %}
+              <span style="color:var(--rouge); font-weight:600;">-{{ t.montant|floatformat:2|intcomma }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if t.compte_destination_id == compte.id %}
+              <span style="color:var(--vert); font-weight:600;">+{{ t.montant|floatformat:2|intcomma }}</span>
+            {% endif %}
+          </td>
+          <td>{% if t.compte_source_id == compte.id and t.frais %}{{ t.frais|floatformat:2|intcomma }}{% else %}—{% endif %}</td>
+          <td>
+            {% if t.statut == "REUSSIE" %}<span class="badge badge-succes">Réussie</span>
+            {% elif t.statut == "EN_ATTENTE" %}<span class="badge badge-attente">En attente</span>
+            {% else %}<span class="badge badge-echec">{{ t.get_statut_display }}</span>{% endif %}
+          </td>
+          <td><a href="{% url 'transactions:telecharger_recu' t.id %}" class="bouton bouton-petit bouton-secondaire">Reçu</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="9">Aucune transaction pour ce compte.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

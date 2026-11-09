@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+{% load humanize static %}
+{% block titre %}Tableau de bord — Ma Banque{% endblock %}
+
+{% block contenu %}
+{# ============================================================ #}
+{# ===================  VERSION WEB (image 1)  ================ #}
+{# ============================================================ #}
+<div class="contenu-principal visible-web-uniquement" style="padding: 20px 0 0;">
+
+  <div class="disposition-tableau-bord" style="margin-bottom:0;">
+    <div class="banniere-accueil" style="margin-bottom:0;">
+      <div>
+        <h1 style="margin:0 0 6px; font-size:1.5rem;">Bonjour, {{ user.get_full_name|default:user.username }}</h1>
+        <p style="opacity:0.85; margin:0;">Voici un aperçu de votre situation bancaire aujourd'hui.</p>
+      </div>
+      <div class="date-heure">
+        📅 {% now "l d F Y" %}<br>
+        🕐 {% now "H:i" %}
+      </div>
+    </div>
+
+    <aside class="carte panneau-actions-rapides">
+      <h3 style="margin-top:0;">Actions rapides</h3>
+      <a href="{% url 'transactions:virement' %}" class="item-action">
+        <div class="icone-ronde bg-violet">🔁</div>
+        <div><strong>Effectuer un virement</strong><div class="sous-titre-action">Vers un autre compte ou bénéficiaire</div></div>
+      </a>
+      <a href="{% url 'paiement_mobile:recharger' %}" class="item-action">
+        <div class="icone-ronde bg-orange">📱</div>
+        <div><strong>Recharger mon compte mobile</strong><div class="sous-titre-action">MTN, Orange, Airtel, Moov</div></div>
+      </a>
+      <a href="{% url 'transactions:releves' %}" class="item-action">
+        <div class="icone-ronde bg-bleu">📄</div>
+        <div><strong>Demander un relevé de compte</strong><div class="sous-titre-action">PDF — 30 derniers jours</div></div>
+      </a>
+      <a href="{% url 'comptes:beneficiaires' %}" class="item-action">
+        <div class="icone-ronde bg-vert">👤</div>
+        <div><strong>Gérer mes bénéficiaires</strong><div class="sous-titre-action">Ajouter ou supprimer un bénéficiaire</div></div>
+      </a>
+    </aside>
+  </div>
+
+  <div class="disposition-tableau-bord" style="margin-top:16px;">
+    <div>
+      <div class="grille-soldes">
+        <div class="carte-solde principale">
+          <div class="icone-mini" style="background:rgba(255,255,255,0.15);">👁️</div>
+          <div class="libelle-solde">Solde total</div>
+          <div class="montant">{{ solde_total|floatformat:0|intcomma }} FCFA</div>
+          <a href="{% url 'transactions:liste_comptes' %}" class="lien-detail">Voir les détails →</a>
+        </div>
+        <div class="carte-solde secondaire">
+          <div class="icone-mini bg-bleu">🏛️</div>
+          <div class="libelle-solde" style="color:var(--gris-texte);">Comptes courants</div>
+          <div class="montant">{{ solde_courants|floatformat:0|intcomma }} FCFA</div>
+          <div class="sous-titre-action">{{ comptes|length }} compte(s)</div>
+        </div>
+        <div class="carte-solde secondaire">
+          <div class="icone-mini bg-vert">🐷</div>
+          <div class="libelle-solde" style="color:var(--gris-texte);">Comptes épargne</div>
+          <div class="montant">{{ solde_epargne|floatformat:0|intcomma }} FCFA</div>
+        </div>
+        <div class="carte-solde secondaire">
+          <div class="icone-mini bg-rouge">🔒</div>
+          <div class="libelle-solde" style="color:var(--gris-texte);">Solde bloqué</div>
+          <div class="montant">{{ solde_bloque|floatformat:0|intcomma }} FCFA</div>
+        </div>
+      </div>
+
+      <div class="grille-actions">
+        <a href="{% url 'transactions:deposer' %}" class="action-rapide"><div class="icone bg-vert">⬆️</div><div class="libelle">Déposer</div></a>
+        <a href="{% url 'transactions:retirer' %}" class="action-rapide"><div class="icone bg-bleu">⬇️</div><div class="libelle">Retirer</div></a>
+        <a href="{% url 'transactions:virement' %}" class="action-rapide"><div class="icone bg-violet">🔁</div><div class="libelle">Virement</div></a>
+        <a href="{% url 'paiement_mobile:recharger' %}" class="action-rapide"><div class="icone bg-orange">📱</div><div class="libelle">Paiement mobile</div></a>
+        <a href="{% url 'paiement_mobile:mon_code_qr' %}" class="action-rapide"><div class="icone bg-violet">🔳</div><div class="libelle">Mon code QR</div></a>
+        <a href="{% url 'comptes:beneficiaires' %}" class="action-rapide"><div class="icone bg-vert" style="background:#16a3a3;">👤➕</div><div class="libelle">Ajouter bénéficiaire</div></a>
+      </div>
+
+      <div class="grille-graphiques">
+        <div class="carte">
+          <div class="page-titre"><h3 style="margin:0;">Graphique des dépenses</h3><span style="font-size:0.8rem; color:var(--gris-texte);">7 derniers jours</span></div>
+          <div class="conteneur-graphique"><canvas id="graphiqueDepenses"></canvas></div>
+        </div>
+        <div class="carte">
+          <h3 style="margin-top:0;">Répartition des comptes</h3>
+          <div class="conteneur-graphique"><canvas id="graphiqueRepartition"></canvas></div>
+        </div>
+      </div>
+
+      <div class="carte" style="margin-top:16px;">
+        <div class="page-titre">
+          <h3 style="margin:0;">Mon activité en temps réel — 60 dernières minutes</h3>
+          <span style="font-size:0.8rem; color:var(--gris-texte);">
+            <span style="color:var(--vert); font-weight:600;">● Direct</span>
+            · actualisé à <span data-horodatage-temps-reel-client>—</span>
+          </span>
+        </div>
+        <div class="conteneur-graphique"><canvas id="graphiqueTempsReelClient"></canvas></div>
+        <p style="font-size:0.8rem; color:var(--gris-texte); margin:8px 0 0;">
+          Dépôts et retraits réussis sur vos comptes, par tranche de 5 minutes.
+          Solde disponible actualisé : <strong data-solde-temps-reel-client>—</strong> FCFA.
+          Actualisation automatique toutes les 20 secondes.
+        </p>
+      </div>
+
+      <div class="carte">
+        <div class="page-titre"><h3 style="margin:0;">Mes comptes</h3><a href="{% url 'transactions:liste_comptes' %}">Voir tous →</a></div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px;">
+        {% for compte in comptes %}
+          <div class="carte" style="box-shadow:none; border:1px solid #eef1f8;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong>{{ compte.get_type_compte_display }}</strong>
+              {% if compte.statut == "ACTIF" %}<span class="badge badge-succes">Actif</span>{% else %}<span class="badge badge-echec">{{ compte.get_statut_display }}</span>{% endif %}
+            </div>
+            <div style="color:var(--gris-texte); font-size:0.85rem;">N° {{ compte.numero_compte }}</div>
+            <div style="font-size:1.3rem; font-weight:700; margin:6px 0;">{{ compte.solde|floatformat:0|intcomma }} FCFA</div>
+            <a href="{% url 'transactions:detail_compte' compte.id %}" class="bouton bouton-secondaire bouton-petit">Détails</a>
+            <a href="{% url 'transactions:detail_compte' compte.id %}" class="bouton bouton-secondaire bouton-petit">Historique</a>
+          </div>
+        {% empty %}
+          <p>Vous n'avez pas encore de compte bancaire.</p>
+        {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <aside class="carte">
+      <div class="page-titre"><h3 style="margin:0;">Dernières transactions</h3><a href="{% url 'transactions:historique' %}">Voir tout →</a></div>
+      {% for transaction_item in dernieres_transactions %}
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-top:1px solid #eef1f8;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="icone-ronde
+              {% if transaction_item.type_transaction == 'DEPOT' %}bg-vert
+              {% elif transaction_item.type_transaction == 'RETRAIT' %}bg-violet
+              {% else %}bg-bleu{% endif %}" style="width:32px; height:32px; font-size:0.85rem;">
+              {% if transaction_item.type_transaction == 'DEPOT' %}⬆️{% elif transaction_item.type_transaction == 'RETRAIT' %}⬇️{% else %}🔁{% endif %}
+            </div>
+            <div>
+              <div style="font-size:0.88rem; font-weight:600;">{{ transaction_item.get_type_transaction_display }}</div>
+              <div style="font-size:0.75rem; color:var(--gris-texte);">{{ transaction_item.date_transaction|date:"d/m/Y - H:i" }}</div>
+            </div>
+          </div>
+          <strong style="{% if transaction_item.compte_destination and transaction_item.compte_destination.proprietaire_id == user.id %}color:var(--vert);{% else %}color:var(--rouge);{% endif %}">
+            {% if transaction_item.compte_destination and transaction_item.compte_destination.proprietaire_id == user.id %}+{% else %}-{% endif %}{{ transaction_item.montant|floatformat:0|intcomma }} FCFA
+          </strong>
+        </div>
+      {% empty %}
+        <p>Aucune transaction récente.</p>
+      {% endfor %}
+    </aside>
+  </div>
+</div>
+
+<script src="{% static 'js/chart.umd.min.js' %}"></script>
+<script>
+  const ctxDepenses = document.getElementById('graphiqueDepenses');
+  if (ctxDepenses) {
+    new Chart(ctxDepenses, {
+      type: 'line',
+      data: {
+        labels: {{ labels_jours|safe }},
+        datasets: [
+          { label: 'Dépôts', data: {{ depots_par_jour|safe }}, borderColor: '#1656d1', backgroundColor: 'rgba(22,86,209,0.08)', fill: true, tension: 0.35 },
+          { label: 'Retraits', data: {{ retraits_par_jour|safe }}, borderColor: '#1fa870', backgroundColor: 'rgba(31,168,112,0.08)', fill: true, tension: 0.35 }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
+    });
+  }
+  const ctxRepartition = document.getElementById('graphiqueRepartition');
+  if (ctxRepartition) {
+    new Chart(ctxRepartition, {
+      type: 'doughnut',
+      data: {
+        labels: ['Compte courant', 'Compte épargne', 'Solde bloqué'],
+        datasets: [{
+          data: [{{ solde_courants }}, {{ solde_epargne }}, {{ solde_bloque }}],
+          backgroundColor: ['#1656d1', '#1fa870', '#e5484d']
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  const graphiquesTempsReelClient = [];
+  function creerGraphiqueTempsReelClient(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !window.Chart) return;
+    graphiquesTempsReelClient.push(new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Dépôts',
+            data: [],
+            borderColor: '#1656d1',
+            backgroundColor: 'rgba(22,86,209,0.08)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2
+          },
+          {
+            label: 'Retraits',
+            data: [],
+            borderColor: '#1fa870',
+            backgroundColor: 'rgba(31,168,112,0.08)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { position: 'top' } },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: (valeur) => new Intl.NumberFormat('fr-FR').format(valeur)
+            }
+          }
+        }
+      }
+    }));
+  }
+  creerGraphiqueTempsReelClient('graphiqueTempsReelClient');
+  creerGraphiqueTempsReelClient('graphiqueTempsReelClientMobile');
+
+  const horodatagesTempsReelClient = document.querySelectorAll('[data-horodatage-temps-reel-client]');
+  const soldesTempsReelClient = document.querySelectorAll('[data-solde-temps-reel-client]');
+  async function rafraichirTempsReelClient() {
+    try {
+      const reponse = await fetch("{% url 'comptes:activite_temps_reel' %}", {
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: { Accept: 'application/json' }
+      });
+      if (!reponse.ok) throw new Error('HTTP ' + reponse.status);
+      const donnees = await reponse.json();
+      graphiquesTempsReelClient.forEach((graphique) => {
+        graphique.data.labels = donnees.labels;
+        graphique.data.datasets[0].data = donnees.depots;
+        graphique.data.datasets[1].data = donnees.retraits;
+        graphique.update('none');
+      });
+      horodatagesTempsReelClient.forEach((element) => {
+        element.textContent = donnees.horodatage;
+      });
+      const soldeFormate = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 })
+        .format(Number(donnees.solde_disponible));
+      soldesTempsReelClient.forEach((element) => {
+        element.textContent = soldeFormate;
+      });
+    } catch (erreur) {
+      horodatagesTempsReelClient.forEach((element) => {
+        element.textContent = 'indisponible';
+      });
+    }
+  }
+  if (graphiquesTempsReelClient.length) {
+    rafraichirTempsReelClient();
+    setInterval(rafraichirTempsReelClient, 20000);
+  }
+</script>
+{% endblock %}
+
+{% block contenu_mobile %}
+{# ============================================================ #}
+{# ==================  VERSION MOBILE (image 2)  =============== #}
+{# ============================================================ #}
+<div class="visible-mobile-uniquement">
+<div class="bloc-salutation">
+  <h2>Bonjour, {{ user.get_full_name|default:user.username|upper }} 👋</h2>
+  <p>Bienvenue sur votre espace bancaire.</p>
+</div>
+
+<div class="selecteur-devise">₣ FCFA ⌄</div>
+
+<div class="carte-solde-mobile">
+  <div>
+    <div style="font-size:0.8rem; opacity:0.85;">Solde total 👁️</div>
+    <div class="montant-principal">{{ solde_total|floatformat:2|intcomma }} FCFA</div>
+    <div class="variation">Comptes actifs : {{ comptes|length }}</div>
+  </div>
+  <a href="{% url 'transactions:liste_comptes' %}" class="bouton-voir-comptes">Voir mes comptes ›</a>
+</div>
+
+<div class="titre-section-mobile">
+  <h3>Actions rapides</h3>
+  <a href="{% url 'transactions:liste_comptes' %}">Voir tout ›</a>
+</div>
+<div class="grille-actions-mobile">
+  <a href="{% url 'transactions:liste_comptes' %}" class="action-mobile">
+    <div class="icone-action-mobile bg-bleu">🏛️</div>
+    <div class="titre-action-mobile">Gestion de compte</div>
+    <div class="sous-titre-action-mobile">Solde, historique</div>
+  </a>
+  <a href="{% url 'transactions:deposer' %}" class="action-mobile">
+    <div class="icone-action-mobile bg-vert">💳</div>
+    <div class="titre-action-mobile">Alimentation de compte</div>
+    <div class="sous-titre-action-mobile">Dépôt sur mon compte</div>
+  </a>
+  <a href="{% url 'transactions:virement' %}" class="action-mobile">
+    <div class="icone-action-mobile bg-violet">🔁</div>
+    <div class="titre-action-mobile">Transfert P2P</div>
+    <div class="sous-titre-action-mobile">Envoyer / Recevoir</div>
+  </a>
+  <a href="{% url 'paiement_mobile:paiement_marchand' %}" class="action-mobile">
+    <div class="icone-action-mobile bg-orange">🧾</div>
+    <div class="titre-action-mobile">Paiement Marchands</div>
+    <div class="sous-titre-action-mobile">QR Code</div>
+  </a>
+  <a href="{% url 'paiement_mobile:mon_code_qr' %}" class="action-mobile">
+    <div class="icone-action-mobile bg-violet">🔳</div>
+    <div class="titre-action-mobile">Mon code QR</div>
+    <div class="sous-titre-action-mobile">Recevoir un virement</div>
+  </a>
+  <a href="{% url 'paiement_mobile:recharger' %}" class="action-mobile">
+    <div class="icone-action-mobile bg-rouge">📱</div>
+    <div class="titre-action-mobile">Paiement mobile</div>
+    <div class="sous-titre-action-mobile">MTN, Orange, Airtel, Moov</div>
+  </a>
+  <a href="{% url 'comptes:bientot' cle='mandats-emission' %}" class="action-mobile">
+    <div class="icone-action-mobile" style="background:#16a3a3;">📝</div>
+    <div class="titre-action-mobile">Émission de Mandats</div>
+    <div class="sous-titre-action-mobile">Créer un mandat</div>
+  </a>
+  <a href="{% url 'comptes:bientot' cle='mandats-encaissement' %}" class="action-mobile">
+    <div class="icone-action-mobile bg-violet">🔏</div>
+    <div class="titre-action-mobile">Encaissement des Mandats</div>
+    <div class="sous-titre-action-mobile">CNSS · CNAM · etc</div>
+  </a>
+  <a href="{% url 'comptes:bientot' cle='microcredit' %}" class="action-mobile">
+    <div class="icone-action-mobile" style="background:#e0a415;">📈</div>
+    <div class="titre-action-mobile">Microcrédit</div>
+    <div class="sous-titre-action-mobile">Prêt express</div>
+  </a>
+  <a href="{% url 'comptes:notifications' %}" class="action-mobile">
+    <div class="icone-action-mobile bg-bleu">📋</div>
+    <div class="titre-action-mobile">Journal de l'application</div>
+    <div class="sous-titre-action-mobile">Activités &amp; logs</div>
+  </a>
+</div>
+
+<div class="titre-section-mobile">
+  <h3>Activité en temps réel</h3>
+  <span style="font-size:0.78rem; color:var(--gris-texte);" data-horodatage-temps-reel-client>—</span>
+</div>
+<div style="background:#fff; border-radius:16px; padding:14px; margin:0 16px 16px; box-shadow:0 2px 10px rgba(15,23,42,0.06);">
+  <div class="conteneur-graphique" style="height:220px;"><canvas id="graphiqueTempsReelClientMobile"></canvas></div>
+  <p style="font-size:0.78rem; color:var(--gris-texte); margin:8px 0 0;">
+    Dépôts et retraits des 60 dernières minutes.
+    Solde disponible : <strong data-solde-temps-reel-client>—</strong> FCFA.
+  </p>
+</div>
+
+<div class="banniere-securite-mobile">
+  <div>
+    <strong>🛡️ Votre sécurité, notre priorité</strong><br>
+    <span style="color:var(--gris-texte);">Nous protégeons vos données et vos transactions avec les plus hauts standards de sécurité.</span>
+  </div>
+  <a href="{% url 'comptes:parametres' %}" class="bouton bouton-petit" style="background:var(--vert); white-space:nowrap;">En savoir plus ›</a>
+</div>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block titre %}Activer la double authentification{% endblock %}
+{% block contenu %}
+<div class="page-titre"><h1>🔐 Activer la double authentification</h1></div>
+<div class="carte" style="max-width:620px; margin:0 auto;">
+  <p style="color:var(--gris-texte); font-size:0.9rem;">
+    Scannez ce QR code avec une application d'authentification compatible TOTP
+    (Google Authenticator, Microsoft Authenticator, Authy, FreeOTP…), puis saisissez le code affiché.
+  </p>
+  <div style="text-align:center; margin:18px 0;">
+    <img src="{{ qr_data_uri }}" alt="QR code d'activation TOTP" style="width:220px; height:220px; border-radius:12px; background:white; padding:8px;">
+  </div>
+  <p style="text-align:center; font-size:0.85rem;">
+    Impossible de scanner ? Saisissez manuellement la clé :<br>
+    <code style="font-size:1rem; letter-spacing:0.1em;">{{ secret }}</code>
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <div class="groupe-champ">
+      <label for="code">Code à 6 chiffres généré par l'application</label>
+      <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" required
+             style="letter-spacing:0.2em; font-size:1.2rem; text-align:center;">
+    </div>
+    <button type="submit" class="bouton" style="width:100%;">Activer la double authentification</button>
+  </form>
+  <p style="font-size:0.78rem; color:var(--gris-texte); margin-bottom:0;">
+    Aucune donnée n'est envoyée à un tiers : la vérification est effectuée localement par la banque.
+  </p>
+</div>
+{% endblock %}

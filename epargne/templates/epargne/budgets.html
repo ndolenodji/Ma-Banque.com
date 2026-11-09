@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Budgets mensuels{% endblock %}
+{% block contenu %}
+<a href="{% url 'epargne:tableau_epargne' %}" class="lien-retour">← Retour à l'épargne</a>
+<div class="page-titre"><h1>📊 Budgets mensuels</h1></div>
+
+<div class="grille-deux-colonnes">
+  <div>
+    <div class="carte">
+      <h3 class="premier-titre">Suivi — {{ mois_courant|date:"F Y" }}</h3>
+      <div class="tableau-defilement">
+        <table class="tableau-donnees">
+          <thead>
+            <tr><th>Catégorie</th><th>Dépensé</th><th>Plafond</th><th>Consommation</th><th>Statut</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+          {% for budget in budgets %}
+            <tr>
+              <td><strong>{{ budget.get_categorie_display }}</strong></td>
+              <td>{{ budget.depense_courante|floatformat:0|intcomma }} FCFA</td>
+              <td>{{ budget.plafond_mensuel|floatformat:0|intcomma }} FCFA</td>
+              <td style="min-width:130px;">
+                <div class="barre-progression" style="height:8px;">
+                  <span style="width: {% if budget.pourcentage_courant > 100 %}100{% else %}{{ budget.pourcentage_courant }}{% endif %}%;
+                    background: {% if budget.pourcentage_courant >= 100 %}var(--rouge){% elif budget.pourcentage_courant >= budget.seuil_alerte %}var(--orange){% else %}var(--vert){% endif %};"></span>
+                </div>
+                <span class="texte-petit">{{ budget.pourcentage_courant }} %</span>
+              </td>
+              <td>
+                {% if not budget.actif %}
+                  <span class="badge badge-echec">Inactif</span>
+                {% elif budget.pourcentage_courant >= 100 %}
+                  <span class="badge badge-echec">Dépassé</span>
+                {% elif budget.pourcentage_courant >= budget.seuil_alerte %}
+                  <span class="badge badge-attente">Seuil atteint</span>
+                {% else %}
+                  <span class="badge badge-succes">Sous contrôle</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="barre-boutons">
+                  <a href="{% url 'epargne:modifier_budget' budget.pk %}" class="lien-inline">Modifier</a>
+                  <form method="post" action="{% url 'epargne:supprimer_budget' budget.pk %}" onsubmit="return confirm('Supprimer ce budget ?');">
+                    {% csrf_token %}
+                    <button type="submit" class="lien-inline lien-danger">Supprimer</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6">Aucun budget défini. Créez un budget pour suivre vos dépenses par catégorie.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="texte-petit" style="margin:12px 0 0;">
+        Les dépenses sont calculées à partir des transactions réussies de vos comptes sur le mois en cours.
+        Les opérations en attente ou échouées ne sont pas comptées.
+      </p>
+    </div>
+  </div>
+
+  <div>
+    <div class="carte">
+      <h3 class="premier-titre">Nouveau budget</h3>
+      <form method="post">
+        {% csrf_token %}
+        {% for erreur in formulaire.non_field_errors %}
+          <div class="message erreur">{{ erreur }}</div>
+        {% endfor %}
+        {% for champ in formulaire %}
+          <div class="groupe-champ">
+            {% if champ.field.widget.input_type == "checkbox" %}
+              <label class="case-a-cocher">{{ champ }} {{ champ.label }}</label>
+            {% else %}
+              <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+              {{ champ }}
+            {% endif %}
+            {% if champ.help_text %}<div class="aide">{{ champ.help_text }}</div>{% endif %}
+            {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+        <button type="submit" class="bouton" style="width:100%;">Créer le budget</button>
+      </form>
+    </div>
+    <div class="encart-info" style="margin-top:16px;">
+      💡 Un seul budget par catégorie. Une alerte s'affiche dès que le seuil choisi est atteint.
+    </div>
+  </div>
+</div>
+{% endblock %}

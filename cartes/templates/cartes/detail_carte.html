@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Carte {{ carte.numero_masque }}{% endblock %}
+{% block contenu %}
+<a href="{% url 'cartes:mes_cartes' %}" class="lien-retour">← Retour à mes cartes</a>
+<div class="page-titre"><h1>💳 Gérer ma carte</h1></div>
+
+<div class="grille-deux-colonnes">
+  <div>
+    <div class="carte-bancaire-visuel {% if carte.statut == 'ACTIVE' %}active{% elif carte.statut == 'GELEE' %}gelee{% else %}inactive{% endif %}" style="margin-bottom:16px;">
+      <div class="cb-haut">
+        <span class="cb-marque">🏦 Ma Banque</span>
+        <span class="badge {% if carte.statut == 'ACTIVE' %}badge-succes{% elif carte.statut == 'GELEE' %}badge-attente{% elif carte.statut == 'ANNULEE' %}badge-echec{% else %}badge-attente{% endif %}">
+          {{ carte.get_statut_display }}
+        </span>
+      </div>
+      <div class="cb-puce">▣</div>
+      <div class="cb-numero">{{ carte.numero_masque }}</div>
+      <div class="cb-bas">
+        <div>
+          <div class="cb-libelle">Titulaire</div>
+          <div>{{ carte.nom_titulaire }}</div>
+        </div>
+        <div>
+          <div class="cb-libelle">Expire</div>
+          <div>{{ carte.date_expiration|date:"m/y" }}</div>
+        </div>
+        <div class="cb-type">{{ carte.get_type_carte_display }}</div>
+      </div>
+      <div class="cb-demo">Démo — {{ carte.identifiant_demo }}</div>
+    </div>
+
+    <div class="carte">
+      <h3 class="premier-titre">Informations</h3>
+      <div class="regle-frais"><span>Compte support</span><strong>{{ carte.compte.numero_compte }}</strong></div>
+      <div class="regle-frais"><span>Type</span><strong>{{ carte.get_type_carte_display }}</strong></div>
+      <div class="regle-frais"><span>Réseau</span><strong>{{ carte.get_reseau_display }}</strong></div>
+      <div class="regle-frais"><span>Expiration</span><strong>{{ carte.date_expiration|date:"d/m/Y" }}</strong></div>
+      <div class="regle-frais"><span>Créée le</span><strong>{{ carte.date_creation|date:"d/m/Y" }}</strong></div>
+      {% if carte.motif_annulation %}
+      <div class="regle-frais"><span>Motif d'annulation</span><strong>{{ carte.motif_annulation }}</strong></div>
+      {% endif %}
+      <p class="texte-petit" style="margin-bottom:0; margin-top:10px;">
+        🧪 Carte de démonstration : aucun PAN réel, CVV ou PIN n'existe pour cette carte.
+        Les contrôles ci-dessous sont fonctionnels dans l'application mais ne pilotent aucun réseau de paiement.
+      </p>
+    </div>
+  </div>
+
+  <div>
+    {% if peut_modifier %}
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Contrôles et plafonds</h3>
+      <form method="post">
+        {% csrf_token %}
+        {% for erreur in formulaire.non_field_errors %}
+          <div class="message erreur">{{ erreur }}</div>
+        {% endfor %}
+        {% for champ in formulaire %}
+          <div class="groupe-champ">
+            {% if champ.field.widget.input_type == "checkbox" %}
+              <label class="case-a-cocher">{{ champ }} {{ champ.label }}</label>
+            {% else %}
+              <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+              {{ champ }}
+            {% endif %}
+            {% if champ.help_text %}<div class="aide">{{ champ.help_text }}</div>{% endif %}
+            {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+        <button type="submit" class="bouton" style="width:100%;">Enregistrer les réglages</button>
+      </form>
+    </div>
+
+    <div class="carte">
+      <h3 class="premier-titre">Actions</h3>
+      {% if carte.statut == "ACTIVE" %}
+      <form method="post" action="{% url 'cartes:basculer_carte' carte.pk %}" onsubmit="return confirm('Geler cette carte ? Aucun paiement ne sera accepté tant qu\'elle est gelée.');">
+        {% csrf_token %}
+        <button type="submit" class="bouton bouton-secondaire" style="width:100%;">❄️ Geler la carte</button>
+      </form>
+      {% elif carte.statut == "GELEE" %}
+      <form method="post" action="{% url 'cartes:basculer_carte' carte.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="bouton" style="width:100%;">▶️ Réactiver la carte</button>
+      </form>
+      {% endif %}
+
+      {% if carte.statut != "ANNULEE" %}
+      <form method="post" action="{% url 'cartes:annuler_carte' carte.pk %}" style="margin-top:10px;" onsubmit="return confirm('Annuler définitivement cette carte ? Cette action est irréversible.');">
+        {% csrf_token %}
+        <button type="submit" class="bouton bouton-danger" style="width:100%;">🗑️ Annuler définitivement</button>
+      </form>
+      {% else %}
+      <p class="texte-petit" style="margin-bottom:0;">Cette carte est annulée et ne peut plus être réactivée.</p>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="carte">
+      <h3 class="premier-titre">Carte non modifiable</h3>
+      <p class="texte-petit" style="margin-bottom:0;">
+        {% if carte.statut == "DEMANDEE" %}
+        Cette carte physique est en attente d'activation par la banque. Vous pourrez régler ses contrôles une fois active.
+        {% elif carte.statut == "EXPIREE" %}
+        Cette carte est expirée. Demandez une nouvelle carte pour continuer.
+        {% else %}
+        Cette carte est annulée. Ses réglages ne sont plus modifiables.
+        {% endif %}
+      </p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

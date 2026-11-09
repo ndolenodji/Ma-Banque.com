@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Devises et conversions{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🌍 Devises et conversions</h1>
+  <div class="barre-boutons">
+    <a href="{% url 'devises:historique_conversions' %}" class="bouton bouton-secondaire">🕐 Historique des conversions</a>
+  </div>
+</div>
+
+<div class="grille-deux-colonnes">
+  <div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Taux administrés</h3>
+      <p class="texte-petit" style="margin-top:0;">
+        Les taux sont saisis par un administrateur avec leur source. Aucun taux de marché
+        en temps réel n'est utilisé ni inventé. La devise XAF (FCFA) est la référence.
+      </p>
+      <div class="tableau-defilement">
+        <table class="tableau-donnees">
+          <thead><tr><th>Devise</th><th>Nom</th><th>Taux vers XAF</th><th>Source</th><th>Mise à jour</th></tr></thead>
+          <tbody>
+          {% for devise in devises %}
+            <tr>
+              <td><strong>{{ devise.code }}</strong>{% if devise.code == "XAF" %} <span class="badge badge-info">Référence</span>{% endif %}</td>
+              <td>{{ devise.nom }}</td>
+              <td>
+                {% if devise.taux_configure %}
+                  1 {{ devise.code }} = {{ devise.taux_vers_xaf|floatformat:6 }} XAF
+                {% else %}
+                  <span class="badge badge-attente">Non configuré</span>
+                {% endif %}
+              </td>
+              <td class="texte-petit">{{ devise.source_taux|default:"—" }}</td>
+              <td class="texte-petit">{{ devise.date_maj_taux|date:"d/m/Y H:i"|default:"—" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5">Aucune devise active.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="carte">
+      <h3 class="premier-titre">Mes comptes en devises</h3>
+      {% for compte in comptes %}
+        <div class="regle-frais">
+          <span>{{ compte.get_type_compte_display }} n° {{ compte.numero_compte }}</span>
+          <strong>{{ compte.solde|floatformat:0|intcomma }} {{ compte.code_devise }}</strong>
+        </div>
+      {% empty %}
+        <p class="texte-petit" style="margin-bottom:0;">Aucun compte actif.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div>
+    {% if paires_disponibles %}
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Convertir un montant</h3>
+      <form method="post" id="formulaire-conversion">
+        {% csrf_token %}
+        {{ formulaire.cle_idempotence }}
+        {% for erreur in formulaire.non_field_errors %}
+          <div class="message erreur">{{ erreur }}</div>
+        {% endfor %}
+        {% for champ in formulaire.visible_fields %}
+          <div class="groupe-champ">
+            <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+            {{ champ }}
+            {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+        <div id="apercu-conversion" class="encart-info" style="display:none; margin-bottom:12px;"></div>
+        <button type="submit" class="bouton" style="width:100%;">Confirmer la conversion</button>
+        <p class="texte-petit" style="margin-bottom:0; text-align:center;">
+          Le débit et le crédit sont appliqués en une seule transaction.
+        </p>
+      </form>
+    </div>
+    {% else %}
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Conversion indisponible</h3>
+      <p class="texte-petit" style="margin-top:0;">
+        Une conversion nécessite deux comptes actifs dans des devises différentes, dont les taux
+        sont configurés. Actuellement, aucune paire de comptes ne remplit ces conditions.
+      </p>
+      <p class="texte-petit" style="margin-bottom:0;">
+        Pour ouvrir un compte dans une autre devise, utilisez
+        <a href="{% url 'transactions:ouvrir_compte' %}" class="lien-inline">l'ouverture de compte</a>.
+        Si la devise n'a pas de taux, un administrateur doit le saisir dans l'administration.
+      </p>
+    </div>
+    {% endif %}
+
+    <div class="carte">
+      <h3 class="premier-titre">Bon à savoir</h3>
+      <p class="texte-petit" style="margin-top:0;">
+        Les frais de conversion éventuels suivent la grille tarifaire de la banque. Ils sont
+        débités du compte source en plus du montant converti. Un taux non configuré bloque
+        toute conversion : aucun taux par défaut n'est appliqué.
+      </p>
+      {% if frais_estimes is not None %}
+      <div class="regle-frais"><span>Frais estimés</span><strong>{{ frais_estimes|floatformat:0|intcomma }} FCFA</strong></div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block contenu_mobile %}{% endblock %}
+
+{% block extra_js %}{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const formulaire = document.getElementById("formulaire-conversion");
+  if (!formulaire) return;
+  const apercu = document.getElementById("apercu-conversion");
+  const url = "{% url 'devises:apercu_conversion' %}";
+  let minuterie = null;
+
+  function champ(nom) { return formulaire.querySelector('[name="' + nom + '"]'); }
+
+  async function actualiser() {
+    const source = champ("compte_source");
+    const destination = champ("compte_destination");
+    const montant = champ("montant");
+    if (!source || !destination || !montant) return;
+    if (!source.value || !destination.value || !montant.value) {
+      apercu.style.display = "none";
+      return;
+    }
+    const parametres = new URLSearchParams({
+      compte_source: source.value,
+      compte_destination: destination.value,
+      montant: montant.value,
+    });
+    try {
+      const reponse = await fetch(url + "?" + parametres.toString(), {
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        credentials: "same-origin",
+      });
+      const donnees = await reponse.json();
+      if (!reponse.ok) {
+        apercu.textContent = "⚠️ " + (donnees.erreur || "Aperçu indisponible.");
+        apercu.style.display = "block";
+        return;
+      }
+      apercu.textContent = "💱 " + donnees.montant_source + " " + donnees.code_source +
+        " → " + donnees.montant_destination + " " + donnees.code_destination +
+        " (taux " + donnees.taux + "). Frais : " + donnees.frais + " FCFA. Total débité : " +
+        donnees.total_debit + " " + donnees.code_source + ". " + donnees.avertissement;
+      apercu.style.display = "block";
+    } catch (erreur) {
+      apercu.style.display = "none";
+    }
+  }
+
+  formulaire.addEventListener("change", actualiser);
+  formulaire.addEventListener("input", function () {
+    clearTimeout(minuterie);
+    minuterie = setTimeout(actualiser, 350);
+  });
+})();
+</script>
+{% endblock %}

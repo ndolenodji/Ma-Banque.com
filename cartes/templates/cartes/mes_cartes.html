@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Mes cartes bancaires{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>💳 Mes cartes</h1>
+  <div class="barre-boutons">
+    <a href="{% url 'cartes:demander_carte' %}" class="bouton">➕ Demander une carte</a>
+  </div>
+</div>
+
+<div class="encart-info" style="margin-bottom:16px;">
+  🧪 <strong>Cartes de démonstration.</strong>
+  Aucune carte réelle n'est émise et aucun numéro de carte, CVV ou PIN n'est généré ou stocké.
+  Les identifiants affichés servent uniquement à illustrer le parcours.
+</div>
+
+{% if cartes %}
+<div class="grille-mes-cartes">
+  {% for carte in cartes %}
+  <div class="carte-bancaire-visuel {% if carte.statut == 'ACTIVE' %}active{% elif carte.statut == 'GELEE' %}gelee{% else %}inactive{% endif %}">
+    <div class="cb-haut">
+      <span class="cb-marque">🏦 Ma Banque</span>
+      <span class="badge {% if carte.statut == 'ACTIVE' %}badge-succes{% elif carte.statut == 'GELEE' %}badge-attente{% elif carte.statut == 'ANNULEE' %}badge-echec{% else %}badge-attente{% endif %}">
+        {{ carte.get_statut_display }}
+      </span>
+    </div>
+    <div class="cb-puce">▣</div>
+    <div class="cb-numero">{{ carte.numero_masque }}</div>
+    <div class="cb-bas">
+      <div>
+        <div class="cb-libelle">Titulaire</div>
+        <div>{{ carte.nom_titulaire }}</div>
+      </div>
+      <div>
+        <div class="cb-libelle">Expire</div>
+        <div>{{ carte.date_expiration|date:"m/y" }}</div>
+      </div>
+      <div class="cb-type">{{ carte.get_type_carte_display }}</div>
+    </div>
+    <div class="cb-demo">Démo — {{ carte.identifiant_demo }}</div>
+  </div>
+  <div class="carte" style="margin-top:0;">
+    <div class="regle-frais"><span>Compte support</span><strong>{{ carte.compte.numero_compte }}</strong></div>
+    <div class="regle-frais"><span>Paiements en ligne</span><strong>{% if carte.paiements_en_ligne %}Activés{% else %}Bloqués{% endif %}</strong></div>
+    <div class="regle-frais"><span>Paiements internationaux</span><strong>{% if carte.paiements_internationaux %}Autorisés{% else %}Bloqués{% endif %}</strong></div>
+    <div class="regle-frais"><span>Plafond journalier</span><strong>{{ carte.plafond_journalier|floatformat:0|intcomma }} FCFA</strong></div>
+    <a href="{% url 'cartes:detail_carte' carte.pk %}" class="bouton bouton-secondaire" style="width:100%; margin-top:12px; text-align:center;">Gérer la carte</a>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="carte" style="text-align:center; padding:40px;">
+  <div style="font-size:2.4rem; margin-bottom:8px;">💳</div>
+  <h3 class="premier-titre">Aucune carte pour le moment</h3>
+  <p class="texte-petit">Demandez une carte virtuelle de démonstration, activée immédiatement, ou une carte physique soumise à validation.</p>
+  <a href="{% url 'cartes:demander_carte' %}" class="bouton">Demander ma première carte</a>
+</div>
+{% endif %}
+{% endblock %}

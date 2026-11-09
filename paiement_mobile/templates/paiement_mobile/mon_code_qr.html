@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block titre %}Mon code QR{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🔳 Mon code QR</h1>
+  <div class="barre-boutons">
+    <a href="{% url 'paiement_mobile:paiement_marchand' %}" class="bouton bouton-secondaire">🧾 QR de paiement marchand</a>
+    <a href="{% url 'paiement_mobile:historique' %}" class="bouton bouton-secondaire">🧾 Historique mobile</a>
+  </div>
+</div>
+
+<div class="message info">
+  Ce code QR est un <strong>QR réel et scannable</strong>. Il contient uniquement votre nom,
+  le numéro du compte choisi et sa devise. Il ne contient ni solde, ni mot de passe, ni code PIN.
+</div>
+
+{% if compte %}
+  {% if comptes|length > 1 %}
+  <form method="get" class="carte" style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:16px;">
+    <div class="groupe-champ" style="flex:1; min-width:260px; margin:0;">
+      <label for="compte">Compte affiché dans le QR</label>
+      <select name="compte" id="compte" onchange="this.form.submit()">
+        {% for c in comptes %}
+          <option value="{{ c.pk }}" {% if c.pk == compte.pk %}selected{% endif %}>
+            {{ c.get_type_compte_display }} — n° {{ c.numero_compte }} ({{ c.code_devise }})
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="bouton bouton-secondaire">Afficher</button>
+  </form>
+  {% endif %}
+
+  <div class="grille-deux-colonnes">
+    <div class="carte" style="text-align:center;">
+      <h3 class="premier-titre">QR du compte n° {{ compte.numero_compte }}</h3>
+      <img src="{{ qr_data_uri }}" alt="Code QR du compte {{ compte.numero_compte }}"
+           width="260" height="260" style="max-width:100%; height:auto; image-rendering:pixelated;">
+      <p style="margin:12px 0 4px;"><strong>{{ user.get_full_name|default:user.username }}</strong></p>
+      <p class="texte-petit" style="margin:0;">
+        {{ compte.get_type_compte_display }} — {{ compte.code_devise }}
+      </p>
+      <a href="{% url 'paiement_mobile:telecharger_mon_qr' %}?compte={{ compte.pk }}"
+         class="bouton" style="margin-top:14px;">⬇️ Télécharger le QR (PNG)</a>
+    </div>
+
+    <aside class="carte">
+      <h3 class="premier-titre">Comment l'utiliser ?</h3>
+      <ol class="texte-petit" style="padding-left:18px; line-height:1.9;">
+        <li>Présentez ce QR à un agent ou à un proche pour recevoir un virement.</li>
+        <li>Le scan affiche le titulaire et le numéro de compte : vérifiez-les avant de valider.</li>
+        <li>Le numéro de compte reste saisissable manuellement dans les formulaires de dépôt,
+          de recharge et de virement.</li>
+      </ol>
+      <div class="encart-info">
+        Un QR ne remplace pas une confirmation bancaire : aucune somme n'est débitée ni créditée
+        du seul fait du scan. Toute opération reste validée dans l'application par un utilisateur authentifié.
+      </div>
+    </aside>
+  </div>
+{% else %}
+  <div class="message erreur">
+    Vous n'avez aucun compte actif. Ouvrez un compte avant de générer un code QR.
+  </div>
+{% endif %}
+{% endblock %}

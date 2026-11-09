@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Épargne et budgets{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🐖 Épargne et budgets</h1>
+  <div class="barre-boutons">
+    <a href="{% url 'epargne:budgets' %}" class="bouton bouton-secondaire">📊 Budgets</a>
+    <a href="{% url 'epargne:creer_objectif' %}" class="bouton">➕ Nouvel objectif</a>
+  </div>
+</div>
+
+<div class="grille-cartes">
+  <div class="carte carte-stat">
+    <div class="icone bg-vert">🏦</div>
+    <div class="valeur">{{ total_epargne|floatformat:0|intcomma }} FCFA</div>
+    <div class="libelle">Solde de mes comptes d'épargne</div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="icone bg-bleu">🎯</div>
+    <div class="valeur">{{ total_objectifs|floatformat:0|intcomma }} FCFA</div>
+    <div class="libelle">Épargné dans mes objectifs</div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="icone bg-violet">📈</div>
+    <div class="valeur">{{ objectifs_actifs|length }}</div>
+    <div class="libelle">Objectif{{ objectifs_actifs|length|pluralize }} en cours</div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="icone bg-orange">🪙</div>
+    <div class="valeur">{% if config_arrondi and config_arrondi.actif %}Actif{% else %}Inactif{% endif %}</div>
+    <div class="libelle">Arrondi automatique</div>
+  </div>
+</div>
+
+{% if not comptes_epargne %}
+<div class="encart-info" style="margin-bottom:16px;">
+  💡 Vous n'avez pas encore de compte d'épargne.
+  <a href="{% url 'transactions:ouvrir_compte' %}">Ouvrir un compte épargne</a>
+  pour commencer à constituer une réserve.
+</div>
+{% endif %}
+
+<div class="disposition-tableau-bord">
+  <div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Mes objectifs d'épargne</h3>
+      {% if objectifs %}
+      <div class="liste-objectifs">
+        {% for objectif in objectifs %}
+        <div class="objectif-carte">
+          <div class="objectif-entete">
+            <div>
+              <strong>{{ objectif.nom }}</strong>
+              <div class="texte-petit" style="margin-top:2px;">
+                {{ objectif.compte_epargne.numero_compte }}
+                {% if objectif.date_cible %}· échéance {{ objectif.date_cible|date:"d/m/Y" }}{% endif %}
+              </div>
+            </div>
+            <span class="badge {% if objectif.statut == 'ATTEINT' %}badge-succes{% elif objectif.statut == 'ANNULE' %}badge-echec{% else %}badge-info{% endif %}">
+              {{ objectif.get_statut_display }}
+            </span>
+          </div>
+          <div class="barre-progression">
+            <span style="width: {{ objectif.progression }}%; background: {{ objectif.couleur }};"></span>
+          </div>
+          <div class="objectif-montants">
+            <span>{{ objectif.montant_actuel|floatformat:0|intcomma }} / {{ objectif.montant_cible|floatformat:0|intcomma }} FCFA</span>
+            <strong>{{ objectif.progression }} %</strong>
+          </div>
+          <div class="objectif-actions">
+            <a href="{% url 'epargne:detail_objectif' objectif.pk %}" class="lien-inline">Voir le détail</a>
+            {% if objectif.statut == "ACTIF" %}
+            <a href="{% url 'epargne:detail_objectif' objectif.pk %}#contribuer" class="lien-inline">💸 Contribuer</a>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="texte-petit">Aucun objectif pour le moment. Créez un objectif pour suivre votre progression.</p>
+      <a href="{% url 'epargne:creer_objectif' %}" class="bouton">Créer un objectif</a>
+      {% endif %}
+    </div>
+
+    <div class="carte">
+      <div class="page-titre" style="margin-bottom:10px;">
+        <h3 class="premier-titre" style="margin:0;">Dernières contributions</h3>
+        <a href="{% url 'epargne:budgets' %}" class="lien-inline">Gérer mes budgets →</a>
+      </div>
+      <div class="tableau-defilement">
+        <table class="tableau-donnees">
+          <thead><tr><th>Date</th><th>Objectif</th><th>Type</th><th>Montant</th></tr></thead>
+          <tbody>
+          {% for contribution in contributions %}
+            <tr>
+              <td>{{ contribution.date_creation|date:"d/m/Y H:i" }}</td>
+              <td>{{ contribution.objectif.nom }}</td>
+              <td>{{ contribution.get_type_contribution_display }}</td>
+              <td>{{ contribution.montant|floatformat:0|intcomma }} FCFA</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4">Aucune contribution enregistrée.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">🪙 Arrondi automatique</h3>
+      {% if config_arrondi and config_arrondi.actif %}
+        <p class="texte-petit" style="margin-top:0;">
+          Actif : chaque dépense éligible sur le compte
+          <strong>{{ config_arrondi.compte_source.numero_compte }}</strong>
+          arrondit le montant au multiple de <strong>{{ config_arrondi.multiple }} FCFA</strong>
+          et verse la différence sur le compte d'épargne.
+        </p>
+        <span class="badge badge-succes">Activé</span>
+      {% else %}
+        <p class="texte-petit" style="margin-top:0;">
+          Transformez vos petites dépenses en épargne : le reliquat de chaque arrondi est versé
+          automatiquement sur votre compte d'épargne.
+        </p>
+        <span class="badge badge-attente">Désactivé</span>
+      {% endif %}
+      <div style="margin-top:12px;">
+        <a href="{% url 'epargne:configurer_arrondi' %}" class="bouton bouton-secondaire" style="width:100%; text-align:center;">
+          Configurer l'arrondi
+        </a>
+      </div>
+    </div>
+
+    <div class="carte">
+      <h3 class="premier-titre">📊 Budgets mensuels</h3>
+      <p class="texte-petit" style="margin-top:0;">
+        Fixez un plafond par catégorie et suivez vos dépenses du mois en cours.
+      </p>
+      <a href="{% url 'epargne:budgets' %}" class="bouton bouton-secondaire" style="width:100%; text-align:center;">
+        Ouvrir mes budgets
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

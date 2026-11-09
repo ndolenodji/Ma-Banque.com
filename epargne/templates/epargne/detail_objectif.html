@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Objectif {{ objectif.nom }}{% endblock %}
+{% block contenu %}
+<a href="{% url 'epargne:tableau_epargne' %}" class="lien-retour">← Retour à l'épargne</a>
+<div class="page-titre">
+  <h1>🎯 {{ objectif.nom }}</h1>
+  <div class="barre-boutons">
+    {% if objectif.statut != "ANNULE" %}
+    <a href="{% url 'epargne:modifier_objectif' objectif.pk %}" class="bouton bouton-secondaire">✏️ Modifier</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grille-deux-colonnes">
+  <div>
+    <div class="carte" style="margin-bottom:16px;">
+      <div class="objectif-entete">
+        <div>
+          <span class="badge {% if objectif.statut == 'ATTEINT' %}badge-succes{% elif objectif.statut == 'ANNULE' %}badge-echec{% else %}badge-info{% endif %}">
+            {{ objectif.get_statut_display }}
+          </span>
+          {% if objectif.date_cible %}
+          <span class="texte-petit">Échéance : {{ objectif.date_cible|date:"d/m/Y" }}</span>
+          {% endif %}
+        </div>
+        <strong>{{ objectif.progression }} %</strong>
+      </div>
+      <div class="barre-progression" style="height:14px;">
+        <span style="width: {{ objectif.progression }}%; background: {{ objectif.couleur }};"></span>
+      </div>
+      <div class="objectif-montants" style="margin-top:10px;">
+        <span>{{ objectif.montant_actuel|floatformat:0|intcomma }} FCFA épargnés</span>
+        <span>Cible : {{ objectif.montant_cible|floatformat:0|intcomma }} FCFA</span>
+      </div>
+      {% if objectif.description %}
+      <p class="texte-petit" style="margin-top:12px; margin-bottom:0;">{{ objectif.description }}</p>
+      {% endif %}
+      <div class="regle-frais" style="margin-top:14px;"><span>Compte d'épargne</span><strong>{{ objectif.compte_epargne.numero_compte }}</strong></div>
+      <div class="regle-frais"><span>Restant à épargner</span><strong>{{ objectif.restant|floatformat:0|intcomma }} FCFA</strong></div>
+    </div>
+
+    <div class="carte">
+      <h3 class="premier-titre">Historique des contributions</h3>
+      <div class="tableau-defilement">
+        <table class="tableau-donnees">
+          <thead><tr><th>Date</th><th>Type</th><th>Référence</th><th>Montant</th></tr></thead>
+          <tbody>
+          {% for contribution in contributions %}
+            <tr>
+              <td>{{ contribution.date_creation|date:"d/m/Y H:i" }}</td>
+              <td>{{ contribution.get_type_contribution_display }}</td>
+              <td>{% if contribution.transaction %}{{ contribution.transaction.reference }}{% else %}—{% endif %}</td>
+              <td>{{ contribution.montant|floatformat:0|intcomma }} FCFA</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4">Aucune contribution pour le moment.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    {% if objectif.statut == "ACTIF" %}
+    <div class="carte" id="contribuer" style="margin-bottom:16px;">
+      <h3 class="premier-titre">💸 Contribuer</h3>
+      <p class="texte-petit" style="margin-top:0;">
+        Le montant est immédiatement débité du compte choisi et crédité sur le compte d'épargne.
+      </p>
+      <form method="post" action="{% url 'epargne:contribuer_objectif' objectif.pk %}">
+        {% csrf_token %}
+        {{ formulaire_contribution.cle_idempotence }}
+        {% for erreur in formulaire_contribution.non_field_errors %}
+          <div class="message erreur">{{ erreur }}</div>
+        {% endfor %}
+        {% for champ in formulaire_contribution.visible_fields %}
+          <div class="groupe-champ">
+            <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+            {{ champ }}
+            {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+        <button type="submit" class="bouton" style="width:100%;">Épargner ce montant</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if objectif.statut == "ACTIF" %}
+    <div class="carte">
+      <h3 class="premier-titre">Annuler l'objectif</h3>
+      <p class="texte-petit" style="margin-top:0;">
+        L'annulation arrête le suivi de cet objectif. Les sommes déjà épargnées restent
+        sur votre compte d'épargne : aucun remboursement automatique n'est effectué.
+      </p>
+      <form method="post" action="{% url 'epargne:annuler_objectif' objectif.pk %}" onsubmit="return confirm('Annuler cet objectif ? Les sommes épargnées resteront sur votre compte d\'épargne.');">
+        {% csrf_token %}
+        <button type="submit" class="bouton bouton-danger" style="width:100%;">Annuler l'objectif</button>
+      </form>
+    </div>
+    {% elif objectif.statut == "ATTEINT" %}
+    <div class="encart-info">
+      🎉 Objectif atteint ! Les fonds restent disponibles sur votre compte d'épargne.
+    </div>
+    {% else %}
+    <div class="encart-info">Cet objectif est annulé et ne peut plus recevoir de contributions.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

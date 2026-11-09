@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block titre %}Réseau d'agents{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🏪 Réseau d'agents</h1>
+  <a href="{% url 'reseau:annuaire_marchands' %}" class="bouton bouton-secondaire">🛍️ Marchands partenaires</a>
+</div>
+
+<div class="message info">
+  Les opérations de caisse sont effectuées par un agent dans l'application de démonstration.
+  Aucun transfert d'espèces réel n'est orchestré par la plateforme.
+</div>
+
+<div class="carte" style="margin-bottom:16px;">
+  <form method="get" class="barre-boutons" style="align-items:flex-end;">
+    <div class="groupe-champ" style="margin:0; min-width:220px;">
+      <label for="recherche-agent">Rechercher</label>
+      <input type="text" id="recherche-agent" name="q" value="{{ recherche }}" placeholder="Agence, code, ville…">
+    </div>
+    <div class="groupe-champ" style="margin:0; min-width:170px;">
+      <label for="ville-agent">Ville</label>
+      <select name="ville" id="ville-agent">
+        <option value="">Toutes les villes</option>
+        {% for v in villes %}
+          <option value="{{ v }}" {% if ville == v %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="bouton">Rechercher</button>
+    <a href="{% url 'reseau:annuaire_agents' %}" class="bouton bouton-secondaire">Réinitialiser</a>
+  </form>
+</div>
+
+{% if agents %}
+  <div class="grille-cartes">
+    {% for agent in agents %}
+      <div class="carte">
+        <div class="objectif-entete">
+          <div>
+            <h3 style="margin:0 0 4px;">{{ agent.nom_agence }}</h3>
+            <div class="texte-petit">Code agent : <strong>{{ agent.code_agent }}</strong></div>
+          </div>
+          {% if agent.actif %}<span class="badge badge-succes">Actif</span>{% endif %}
+        </div>
+        <div class="regle-frais"><span>Ville</span><strong>{{ agent.ville|default:"Non renseignée" }}</strong></div>
+        <div class="regle-frais"><span>Contact</span><strong>{{ agent.utilisateur.get_full_name|default:agent.utilisateur.username }}</strong></div>
+        <p class="texte-petit" style="margin-top:8px;">
+          Présentez-vous à cette agence avec une pièce d'identité pour un dépôt ou un retrait
+          effectué au guichet.
+        </p>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="carte">
+    <p>Aucun agent actif ne correspond à votre recherche.</p>
+  </div>
+{% endif %}
+{% endblock %}

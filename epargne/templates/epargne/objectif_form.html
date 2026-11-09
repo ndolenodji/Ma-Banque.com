@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}{% if objectif %}Modifier{% else %}Nouvel{% endif %} objectif d'épargne{% endblock %}
+{% block contenu %}
+<a href="{% if objectif %}{% url 'epargne:detail_objectif' objectif.pk %}{% else %}{% url 'epargne:tableau_epargne' %}{% endif %}" class="lien-retour">← Retour</a>
+<div class="page-titre">
+  <h1>🎯 {% if objectif %}Modifier l'objectif{% else %}Nouvel objectif d'épargne{% endif %}</h1>
+</div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte formulaire-carte" style="margin:0; max-width:none;">
+    <h3 class="premier-titre">Détails de l'objectif</h3>
+    <form method="post">
+      {% csrf_token %}
+      {% for erreur in formulaire.non_field_errors %}
+        <div class="message erreur">{{ erreur }}</div>
+      {% endfor %}
+      {% for champ in formulaire %}
+        <div class="groupe-champ">
+          <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+          {{ champ }}
+          {% if champ.help_text %}<div class="aide">{{ champ.help_text }}</div>{% endif %}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton" style="width:100%;">
+        {% if objectif %}Enregistrer les modifications{% else %}Créer l'objectif{% endif %}
+      </button>
+    </form>
+  </div>
+
+  <div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Comptes d'épargne disponibles</h3>
+      {% for compte in comptes_epargne %}
+        <div class="regle-frais">
+          <span>{{ compte.numero_compte }}</span>
+          <strong>{{ compte.solde|floatformat:0|intcomma }} FCFA</strong>
+        </div>
+      {% empty %}
+        <p class="texte-petit" style="margin-bottom:0;">Aucun compte d'épargne actif.</p>
+      {% endfor %}
+      <p class="texte-petit" style="margin-top:10px; margin-bottom:0;">
+        Les contributions sont de vrais virements internes : l'argent quitte votre compte
+        pour être déposé sur le compte d'épargne sélectionné.
+      </p>
+    </div>
+    <div class="encart-info">
+      💡 Un objectif vous aide à suivre votre progression. Il ne rapporte pas d'intérêts :
+      aucun taux n'est simulé.
+    </div>
+  </div>
+</div>
+{% endblock %}

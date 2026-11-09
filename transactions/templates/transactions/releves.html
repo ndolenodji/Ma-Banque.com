@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Relevés de compte{% endblock %}
+{% block contenu %}
+<div class="page-titre"><h1>📄 Relevés de compte</h1></div>
+
+<div class="carte" style="margin-bottom:16px;">
+  <h3 class="premier-titre">Générer un relevé sur une période</h3>
+  <form method="get" action="{% url 'transactions:exporter_releve' format_export='pdf' %}">
+    {% for erreur in formulaire.non_field_errors %}<div class="message erreur">{{ erreur }}</div>{% endfor %}
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:14px; align-items:end;">
+      <div class="groupe-champ" style="margin-bottom:0;">
+        <label for="{{ formulaire.compte.id_for_label }}">{{ formulaire.compte.label }}</label>
+        {{ formulaire.compte }}
+        {% for erreur in formulaire.compte.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+      </div>
+      <div class="groupe-champ" style="margin-bottom:0;">
+        <label for="{{ formulaire.date_debut.id_for_label }}">{{ formulaire.date_debut.label }}</label>
+        {{ formulaire.date_debut }}
+        {% for erreur in formulaire.date_debut.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+      </div>
+      <div class="groupe-champ" style="margin-bottom:0;">
+        <label for="{{ formulaire.date_fin.id_for_label }}">{{ formulaire.date_fin.label }}</label>
+        {{ formulaire.date_fin }}
+        {% for erreur in formulaire.date_fin.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+      </div>
+    </div>
+    <div class="barre-boutons" style="margin-top:16px;">
+      <button type="submit" class="bouton" formaction="{% url 'transactions:exporter_releve' format_export='pdf' %}">⬇️ Télécharger le PDF</button>
+      <button type="submit" class="bouton bouton-secondaire" formaction="{% url 'transactions:exporter_releve' format_export='xlsx' %}">📊 Excel</button>
+      <button type="submit" class="bouton bouton-secondaire" formaction="{% url 'transactions:exporter_releve' format_export='csv' %}">🧾 CSV</button>
+    </div>
+  </form>
+  <p class="texte-petit" style="margin-bottom:0; margin-top:12px;">
+    Le relevé présente les soldes d'ouverture et de clôture, les débits, les crédits,
+    les frais et le solde après chaque mouvement. Période maximale : 366 jours.
+  </p>
+</div>
+
+<div class="carte">
+  <h3 class="premier-titre">Mes comptes</h3>
+  <div class="tableau-defilement">
+    <table class="tableau-donnees">
+      <thead><tr><th>Compte</th><th>Type</th><th>Devise</th><th>Solde disponible</th><th>Relevé rapide</th></tr></thead>
+      <tbody>
+      {% for compte in comptes %}
+        <tr>
+          <td>N° {{ compte.numero_compte }}</td>
+          <td>{{ compte.get_type_compte_display }}</td>
+          <td>{{ compte.code_devise }}</td>
+          <td>{{ compte.solde_disponible|floatformat:2|intcomma }} {{ compte.code_devise }}</td>
+          <td>
+            <a href="{% url 'transactions:telecharger_releve' compte.id %}" class="bouton bouton-petit bouton-secondaire">
+              PDF — 30 derniers jours
+            </a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">Aucun compte bancaire.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Historique des paiements mobiles{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🧾 Historique des paiements mobiles</h1>
+  <div class="barre-boutons">
+    <a href="{% url 'paiement_mobile:recharger' %}" class="bouton">📱 Recharger</a>
+    <a href="{% url 'paiement_mobile:retrait_mobile' %}" class="bouton bouton-secondaire">💸 Retirer</a>
+  </div>
+</div>
+
+<div class="message info">
+  Toutes les opérations ci-dessous utilisent un service mobile money <strong>simulé</strong>.
+  Les mouvements bancaires, frais et remboursements sont en revanche réels dans la base de démonstration.
+</div>
+
+<div class="grille-cartes">
+  <div class="carte carte-stat">
+    <div class="icone bg-vert">💰</div>
+    <div class="valeur">{{ statistiques.volume_reussi|floatformat:0|intcomma }} FCFA</div>
+    <div class="libelle">Volume des opérations réussies ({{ statistiques.nb_reussi }})</div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="icone bg-orange">⏳</div>
+    <div class="valeur">{{ statistiques.nb_attente }}</div>
+    <div class="libelle">Opération(s) en attente de confirmation</div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="icone bg-rouge">⚠️</div>
+    <div class="valeur">{{ statistiques.nb_echec }}</div>
+    <div class="libelle">Opération(s) échouée(s) ou annulée(s)</div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="icone bg-bleu">🏦</div>
+    <div class="valeur">{{ statistiques.frais_reussi|floatformat:0|intcomma }} FCFA</div>
+    <div class="libelle">Frais effectivement acquittés sur les opérations réussies</div>
+  </div>
+</div>
+
+<div class="carte" style="margin-bottom:16px;">
+  <form method="get" class="barre-boutons" style="align-items:flex-end;">
+    <div class="groupe-champ" style="margin:0; min-width:170px;">
+      <label for="filtre-statut">Statut</label>
+      <select name="statut" id="filtre-statut">
+        <option value="">Tous</option>
+        {% for valeur, libelle in statuts %}
+          <option value="{{ valeur }}" {% if filtres.statut == valeur %}selected{% endif %}>{{ libelle }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="groupe-champ" style="margin:0; min-width:170px;">
+      <label for="filtre-operateur">Opérateur</label>
+      <select name="operateur" id="filtre-operateur">
+        <option value="">Tous</option>
+        {% for valeur, libelle in operateurs %}
+          <option value="{{ valeur }}" {% if filtres.operateur == valeur %}selected{% endif %}>{{ libelle }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="groupe-champ" style="margin:0; min-width:190px;">
+      <label for="filtre-type">Type d'opération</label>
+      <select name="type_operation" id="filtre-type">
+        <option value="">Tous</option>
+        {% for valeur, libelle in types_operation %}
+          <option value="{{ valeur }}" {% if filtres.type_operation == valeur %}selected{% endif %}>{{ libelle }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="bouton">Filtrer</button>
+    <a href="{% url 'paiement_mobile:historique' %}" class="bouton bouton-secondaire">Réinitialiser</a>
+  </form>
+</div>
+
+<div class="carte">
+  <div class="tableau-defilement">
+    <table class="tableau-donnees">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Référence</th>
+          <th>Opération</th>
+          <th>Opérateur</th>
+          <th>Numéro</th>
+          <th>Montant</th>
+          <th>Statut</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for p in paiements %}
+        <tr>
+          <td>{{ p.date_creation|date:"d/m/Y H:i" }}</td>
+          <td><a href="{% url 'paiement_mobile:statut' p.id %}">{{ p.reference_transaction }}</a></td>
+          <td>{{ p.get_type_operation_display }}</td>
+          <td>{{ p.get_operateur_display }}</td>
+          <td>{{ p.numero_telephone }}</td>
+          <td>
+            {{ p.montant|floatformat:0|intcomma }} FCFA
+            {% if p.frais %}<div class="texte-petit">+ {{ p.frais|floatformat:0|intcomma }} frais</div>{% endif %}
+          </td>
+          <td>
+            {% if p.statut == "REUSSI" %}<span class="badge badge-succes">Réussi</span>
+            {% elif p.statut == "EN_ATTENTE" %}<span class="badge badge-attente">En attente</span>
+            {% elif p.statut == "ANNULE" %}<span class="badge badge-echec">Annulé</span>
+            {% else %}<span class="badge badge-echec">Échoué</span>{% endif %}
+            {% if p.transaction_remboursement %}<div class="texte-petit">Remboursé</div>{% endif %}
+          </td>
+          <td><a href="{% url 'paiement_mobile:statut' p.id %}" class="lien-inline">Détails →</a></td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="8">
+            Aucun paiement mobile ne correspond à ces critères.
+            <a href="{% url 'paiement_mobile:recharger' %}">Initier une recharge</a>.
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+    <div class="barre-boutons" style="justify-content:space-between; margin-top:14px;">
+      <span class="texte-petit">
+        Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}
+        — {{ page_obj.paginator.count }} opération(s)
+      </span>
+      <div class="barre-boutons">
+        {% if page_obj.has_previous %}
+          <a class="bouton bouton-secondaire" href="?page={{ page_obj.previous_page_number }}&statut={{ filtres.statut|urlencode }}&operateur={{ filtres.operateur|urlencode }}&type_operation={{ filtres.type_operation|urlencode }}">← Précédent</a>
+        {% endif %}
+        {% if page_obj.has_next %}
+          <a class="bouton bouton-secondaire" href="?page={{ page_obj.next_page_number }}&statut={{ filtres.statut|urlencode }}&operateur={{ filtres.operateur|urlencode }}&type_operation={{ filtres.type_operation|urlencode }}">Suivant →</a>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Supervision des transactions{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>💱 Supervision des transactions</h1>
+  <a href="{% url 'administration:exporter_transactions_csv' %}" class="bouton bouton-secondaire">⬇️ Exporter en CSV</a>
+</div>
+
+<form method="get" class="carte" style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+  <select name="type_transaction" style="padding:10px; border-radius:10px; border:1px solid #dbe2f0;">
+    <option value="">Tous les types</option>
+    {% for valeur, libelle in types_transaction %}<option value="{{ valeur }}">{{ libelle }}</option>{% endfor %}
+  </select>
+  <select name="statut" style="padding:10px; border-radius:10px; border:1px solid #dbe2f0;">
+    <option value="">Tous les statuts</option>
+    {% for valeur, libelle in statuts_transaction %}<option value="{{ valeur }}">{{ libelle }}</option>{% endfor %}
+  </select>
+  <button type="submit" class="bouton">Filtrer</button>
+</form>
+
+<div class="carte">
+  <table class="tableau-donnees">
+    <thead><tr><th>Date</th><th>Type</th><th>Source</th><th>Destination</th><th>Montant</th><th>Statut</th></tr></thead>
+    <tbody>
+    {% for t in transactions %}
+      <tr>
+        <td>{{ t.date_transaction|date:"d/m/Y H:i" }}</td>
+        <td>{{ t.get_type_transaction_display }}</td>
+        <td>{{ t.compte_source.numero_compte|default:"-" }}</td>
+        <td>{{ t.compte_destination.numero_compte|default:"-" }}</td>
+        <td>{{ t.montant|floatformat:0|intcomma }} FCFA</td>
+        <td>
+          {% if t.statut == "REUSSIE" %}<span class="badge badge-succes">Réussie</span>
+          {% elif t.statut == "EN_ATTENTE" %}<span class="badge badge-attente">En attente</span>
+          {% else %}<span class="badge badge-echec">Échouée</span>{% endif %}
+        </td>
+      </tr>
+    {% empty %}<tr><td colspan="6">Aucune transaction.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

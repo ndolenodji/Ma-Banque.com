@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block titre %}{% if est_personnel %}Tickets support{% else %}Mes tickets{% endif %}{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🎫 {% if est_personnel %}Tickets support{% else %}Mes tickets{% endif %}</h1>
+  <div class="barre-boutons">
+    <a href="{% url 'support:faq' %}" class="bouton bouton-secondaire">❓ Consulter la FAQ</a>
+    <a href="{% url 'support:creer_ticket' %}" class="bouton">➕ Nouveau ticket</a>
+  </div>
+</div>
+
+{% if est_personnel %}
+  <div class="message info">
+    Vue support : tous les tickets clients sont visibles. Les notes internes ne sont jamais
+    affichées au client.
+  </div>
+{% endif %}
+
+<div class="carte" style="margin-bottom:16px;">
+  <form method="get" class="barre-boutons" style="align-items:flex-end;">
+    <div class="groupe-champ" style="margin:0; min-width:210px; flex:1;">
+      <label for="recherche-ticket">Rechercher</label>
+      <input type="text" id="recherche-ticket" name="q" value="{{ filtres.recherche }}" placeholder="Référence, sujet{% if est_personnel %}, client{% endif %}…">
+    </div>
+    <div class="groupe-champ" style="margin:0; min-width:160px;">
+      <label for="statut-ticket">Statut</label>
+      <select name="statut" id="statut-ticket">
+        <option value="">Tous</option>
+        {% for valeur, libelle in statuts %}
+          <option value="{{ valeur }}" {% if filtres.statut == valeur %}selected{% endif %}>{{ libelle }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="groupe-champ" style="margin:0; min-width:180px;">
+      <label for="categorie-ticket">Catégorie</label>
+      <select name="categorie" id="categorie-ticket">
+        <option value="">Toutes</option>
+        {% for valeur, libelle in categories %}
+          <option value="{{ valeur }}" {% if filtres.categorie == valeur %}selected{% endif %}>{{ libelle }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="bouton">Filtrer</button>
+    <a href="{% url 'support:mes_tickets' %}" class="bouton bouton-secondaire">Réinitialiser</a>
+  </form>
+</div>
+
+<div class="carte">
+  <div class="tableau-defilement">
+    <table class="tableau-donnees">
+      <thead>
+        <tr>
+          <th>Référence</th>
+          <th>Sujet</th>
+          {% if est_personnel %}<th>Client</th>{% endif %}
+          <th>Catégorie</th>
+          <th>Priorité</th>
+          <th>Statut</th>
+          <th>Messages</th>
+          <th>Dernière activité</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ticket in tickets %}
+          <tr>
+            <td>{{ ticket.reference }}</td>
+            <td>{{ ticket.sujet }}</td>
+            {% if est_personnel %}
+              <td>{{ ticket.client.get_full_name|default:ticket.client.username }}</td>
+            {% endif %}
+            <td>{{ ticket.get_categorie_display }}</td>
+            <td>
+              {% if ticket.priorite == "URGENTE" %}<span class="badge badge-echec">Urgente</span>
+              {% elif ticket.priorite == "HAUTE" %}<span class="badge badge-attente">Haute</span>
+              {% else %}<span class="badge badge-info">{{ ticket.get_priorite_display }}</span>{% endif %}
+            </td>
+            <td>
+              {% if ticket.statut == "OUVERT" %}<span class="badge badge-info">Ouvert</span>
+              {% elif ticket.statut == "EN_COURS" %}<span class="badge badge-attente">En cours</span>
+              {% elif ticket.statut == "RESOLU" %}<span class="badge badge-succes">Résolu</span>
+              {% else %}<span class="badge badge-echec">Fermé</span>{% endif %}
+            </td>
+            <td>{{ ticket.nb_messages }}</td>
+            <td>{{ ticket.date_mise_a_jour|date:"d/m/Y H:i" }}</td>
+            <td><a href="{% url 'support:detail_ticket' ticket.pk %}" class="lien-inline">Ouvrir →</a></td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="{% if est_personnel %}9{% else %}8{% endif %}">
+              Aucun ticket ne correspond à ces critères.
+              <a href="{% url 'support:creer_ticket' %}">Ouvrir un ticket</a>.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

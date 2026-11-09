@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block titre %}Instruction KYC{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🪪 Instruction des dossiers KYC</h1>
+  {% if nb_en_attente %}<span class="badge badge-attente">{{ nb_en_attente }} en attente</span>{% endif %}
+</div>
+
+<form method="get" class="carte" style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+  <input type="text" name="q" value="{{ recherche }}" placeholder="Rechercher un client ou un numéro de pièce..." style="flex:1; min-width:240px; padding:10px; border-radius:10px; border:1px solid #dbe2f0;">
+  <select name="statut" style="padding:10px; border-radius:10px; border:1px solid #dbe2f0;">
+    <option value="">Tous les statuts</option>
+    {% for valeur, libelle in statuts %}
+      <option value="{{ valeur }}" {% if statut == valeur %}selected{% endif %}>{{ libelle }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="bouton">Filtrer</button>
+</form>
+
+<div class="carte">
+  <table class="tableau-donnees">
+    <thead><tr><th>Client</th><th>Pièce</th><th>Statut</th><th>Soumis le</th><th>Documents</th><th>Décision</th></tr></thead>
+    <tbody>
+    {% for dossier in dossiers %}
+      <tr>
+        <td>
+          <strong>{{ dossier.utilisateur.get_full_name|default:dossier.utilisateur.username }}</strong><br>
+          <small style="color:var(--gris-texte);">{{ dossier.utilisateur.telephone }}</small>
+        </td>
+        <td>{{ dossier.get_type_piece_display|default:"-" }}<br><small>{{ dossier.numero_piece|default:"—" }}</small></td>
+        <td>
+          {% if dossier.statut == "APPROUVE" %}<span class="badge badge-succes">Approuvé</span>
+          {% elif dossier.statut == "REJETE" %}<span class="badge badge-echec">Rejeté</span>
+          {% elif dossier.statut == "EN_ATTENTE" %}<span class="badge badge-attente">En attente</span>
+          {% else %}<span class="badge badge-info">Non soumis</span>{% endif %}
+        </td>
+        <td>{{ dossier.date_soumission|date:"d/m/Y H:i"|default:"—" }}</td>
+        <td>{{ dossier.documents.count }}</td>
+        <td>
+          <div style="display:flex; gap:6px; align-items:flex-start; flex-wrap:wrap; min-width:240px;">
+            <a href="{% url 'administration:kyc_detail' dossier.id %}" class="bouton bouton-petit bouton-secondaire">Ouvrir</a>
+            {% if dossier.statut == "EN_ATTENTE" %}
+              <form method="post" action="{% url 'administration:kyc_decider' dossier.id %}"
+                    onsubmit="return confirm('Approuver ce dossier KYC ?');">
+                {% csrf_token %}
+                <input type="hidden" name="decision" value="APPROUVER">
+                <button type="submit" class="bouton bouton-petit" style="background:var(--vert);">Accepter</button>
+              </form>
+              <form method="post" action="{% url 'administration:kyc_decider' dossier.id %}"
+                    onsubmit="return confirm('Rejeter ce dossier KYC ?');" style="display:flex; gap:6px;">
+                {% csrf_token %}
+                <input type="hidden" name="decision" value="REJETER">
+                <input type="text" name="commentaire" required maxlength="255" placeholder="Motif du rejet"
+                       style="width:150px; padding:6px 8px; border-radius:8px; border:1px solid #dbe2f0;">
+                <button type="submit" class="bouton bouton-petit bouton-danger">Rejeter</button>
+              </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6">Aucun dossier pour ce filtre.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Virements programmés{% endblock %}
+{% block contenu %}
+<a href="{% url 'transactions:virement' %}" class="lien-retour">← Virement immédiat</a>
+<div class="page-titre"><h1>🔁 Virements programmés</h1></div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte formulaire-carte" style="margin:0; max-width:none;">
+    <h3 class="premier-titre">Nouveau virement programmé</h3>
+    <form method="post">
+      {% csrf_token %}
+      {% for champ in formulaire.hidden_fields %}{{ champ }}{% endfor %}
+      {% for erreur in formulaire.non_field_errors %}<div class="message erreur">{{ erreur }}</div>{% endfor %}
+      {% for champ in formulaire.visible_fields %}
+        <div class="groupe-champ">
+          <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+          {{ champ }}
+          {% if champ.help_text %}<div class="aide">{{ champ.help_text }}</div>{% endif %}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton" style="width:100%;">Programmer le virement</button>
+    </form>
+  </div>
+
+  <div>
+    <div class="encart-info" style="margin-bottom:16px;">
+      Les échéances sont exécutées par la banque à leur date prévue. En cas de
+      solde insuffisant ou de destination indisponible, le virement passe
+      automatiquement <strong>en pause</strong> et vous êtes notifié. Vous pouvez
+      alors le corriger puis le réactiver.
+    </div>
+    <div class="carte">
+      <h3 class="premier-titre">Frais appliqués</h3>
+      {% for regle in regles_frais %}
+        <div class="regle-frais">
+          <span>
+            {{ regle.libelle }}
+            {% if regle.taux_pourcentage %}— {{ regle.taux_pourcentage }} %{% endif %}
+            {% if regle.frais_fixe %}+ {{ regle.frais_fixe|floatformat:0|intcomma }} FCFA{% endif %}
+          </span>
+          <span>
+            {% if regle.frais_minimum %}<span class="badge badge-info">min {{ regle.frais_minimum|floatformat:0|intcomma }}</span>{% endif %}
+            {% if regle.frais_maximum %}<span class="badge badge-info">max {{ regle.frais_maximum|floatformat:0|intcomma }}</span>{% endif %}
+          </span>
+        </div>
+      {% empty %}
+        <p class="texte-petit" style="margin-bottom:0;">Aucun frais n'est actuellement configuré.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="carte">
+  <h3 class="premier-titre">Mes programmations</h3>
+  <div class="tableau-defilement">
+    <table class="tableau-donnees">
+      <thead>
+        <tr>
+          <th>Bénéficiaire</th>
+          <th>Montant</th>
+          <th>Fréquence</th>
+          <th>Prochaine échéance</th>
+          <th>Exécutions</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for programme in programmes %}
+          <tr>
+            <td>
+              n° {{ programme.numero_destination }}<br>
+              <span class="texte-petit">depuis n° {{ programme.compte_source.numero_compte }}</span>
+            </td>
+            <td>{{ programme.montant|floatformat:2|intcomma }} {{ programme.compte_source.code_devise }}</td>
+            <td>{{ programme.get_frequence_display }}{% if programme.date_fin %}<br><span class="texte-petit">jusqu'au {{ programme.date_fin|date:"d/m/Y" }}</span>{% endif %}</td>
+            <td>{{ programme.prochaine_execution|date:"d/m/Y" }}</td>
+            <td>{{ programme.nombre_executions }}</td>
+            <td>
+              {% if programme.statut == "ACTIF" %}<span class="badge badge-succes">Actif</span>
+              {% elif programme.statut == "PAUSE" %}<span class="badge badge-attente">En pause</span>
+              {% elif programme.statut == "TERMINE" %}<span class="badge badge-info">Terminé</span>
+              {% else %}<span class="badge badge-echec">Annulé</span>{% endif %}
+              {% if programme.derniere_erreur %}
+                <div class="texte-petit" style="margin-top:4px; color:var(--rouge);">{{ programme.derniere_erreur }}</div>
+              {% endif %}
+            </td>
+            <td>
+              <div class="barre-boutons">
+                {% if programme.statut == "ACTIF" or programme.statut == "PAUSE" %}
+                  <form method="post" action="{% url 'transactions:basculer_virement_programme' programme.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="bouton bouton-petit bouton-secondaire">
+                      {% if programme.statut == "ACTIF" %}Pause{% else %}Réactiver{% endif %}
+                    </button>
+                  </form>
+                {% endif %}
+                {% if programme.statut == "ACTIF" %}
+                  <form method="post" action="{% url 'transactions:executer_virement_maintenant' programme.id %}"
+                        onsubmit="return confirm('Exécuter immédiatement cette échéance ? Le calendrier sera recalculé à partir d’aujourd’hui.');">
+                    {% csrf_token %}
+                    <button type="submit" class="bouton bouton-petit">Exécuter</button>
+                  </form>
+                {% endif %}
+                {% if programme.statut == "ACTIF" or programme.statut == "PAUSE" %}
+                  <form method="post" action="{% url 'transactions:annuler_virement_programme' programme.id %}"
+                        onsubmit="return confirm('Annuler définitivement ce virement programmé ?');">
+                    {% csrf_token %}
+                    <button type="submit" class="bouton bouton-petit bouton-danger">Annuler</button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7">Aucun virement programmé pour le moment.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

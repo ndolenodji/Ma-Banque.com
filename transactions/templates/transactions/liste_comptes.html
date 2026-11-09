@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Mes comptes{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>Mes comptes bancaires</h1>
+  <div class="barre-boutons">
+    <a href="{% url 'transactions:releves' %}" class="bouton bouton-secondaire">📄 Relevés</a>
+    <a href="{% url 'transactions:ouvrir_compte' %}" class="bouton">＋ Ouvrir un compte</a>
+  </div>
+</div>
+
+<div class="grille-cartes">
+  {% for compte in comptes %}
+    <div class="carte">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <strong>{{ compte.get_type_compte_display }}</strong>
+        {% if compte.statut == "ACTIF" %}
+          <span class="badge badge-succes">Actif</span>
+        {% else %}
+          <span class="badge badge-echec">{{ compte.get_statut_display }}</span>
+        {% endif %}
+      </div>
+      <p style="color:var(--gris-texte); font-size:0.85rem; margin:6px 0;">
+        N° {{ compte.numero_compte }} — {{ compte.code_devise }}
+      </p>
+      <div class="texte-petit">Solde comptable</div>
+      <div style="font-size:1.35rem; font-weight:700;">{{ compte.solde|floatformat:2|intcomma }} {{ compte.code_devise }}</div>
+      <div class="texte-petit" style="margin-top:6px;">Disponible</div>
+      <div style="font-weight:600; color:var(--vert);">{{ compte.solde_disponible|floatformat:2|intcomma }} {{ compte.code_devise }}</div>
+      <div class="barre-boutons" style="margin-top:12px;">
+        <a href="{% url 'transactions:detail_compte' compte.id %}" class="bouton bouton-secondaire bouton-petit">Détail</a>
+        <a href="{% url 'transactions:telecharger_releve' compte.id %}" class="bouton bouton-petit">Relevé PDF</a>
+      </div>
+    </div>
+  {% empty %}
+    <div class="carte">
+      <p style="margin-top:0;">Vous n'avez aucun compte bancaire.</p>
+      <a href="{% url 'transactions:ouvrir_compte' %}" class="bouton">Ouvrir mon premier compte</a>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

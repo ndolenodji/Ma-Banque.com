@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% load humanize static %}
+{% block titre %}Tableau de bord — Administration{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>📊 Tableau de bord — Supervision</h1>
+  <div class="barre-boutons">
+    {% if user.est_administrateur %}
+      <a href="{% url 'administration:creer_client' %}" class="bouton">➕ Créer un client</a>
+    {% endif %}
+    <a href="{% url 'administration:rapports' %}" class="bouton bouton-secondaire">📈 Rapports</a>
+    <a href="{% url 'administration:supervision_transactions' %}" class="bouton bouton-secondaire">💱 Transactions</a>
+  </div>
+</div>
+
+{% if user.est_administrateur and nb_alertes_critiques %}
+<div class="message erreur">
+  🚨 {{ nb_alertes_critiques }} alerte{{ nb_alertes_critiques|pluralize }} critique{{ nb_alertes_critiques|pluralize }} ouverte{{ nb_alertes_critiques|pluralize }}.
+  <a href="{% url 'risques:alertes' %}?statut=NOUVELLE&niveau=CRITIQUE"><strong>Instruire maintenant →</strong></a>
+</div>
+{% endif %}
+
+<div class="grille-cartes">
+  <div class="carte carte-stat"><div class="icone bg-bleu">👥</div><div class="libelle">Clients</div><div class="valeur">{{ nb_clients }}</div><div class="sous-texte">+{{ nb_nouveaux_clients }} sur 30 jours</div></div>
+  <div class="carte carte-stat"><div class="icone bg-vert">🏛️</div><div class="libelle">Comptes bancaires</div><div class="valeur">{{ nb_comptes }}</div><div class="sous-texte">{{ nb_comptes_bloques }} bloqué{{ nb_comptes_bloques|pluralize }}</div></div>
+  <div class="carte carte-stat"><div class="icone bg-violet">💰</div><div class="libelle">Dépôts en circulation</div><div class="valeur">{{ montant_total_circulation|floatformat:0|intcomma }} FCFA</div></div>
+  <div class="carte carte-stat"><div class="icone bg-orange">💱</div><div class="libelle">Transactions réussies</div><div class="valeur">{{ volume_transactions|intcomma }}</div><div class="sous-texte">{{ volume_periode|floatformat:0|intcomma }} FCFA sur 14 jours</div></div>
+  <div class="carte carte-stat"><div class="icone bg-bleu">📱</div><div class="libelle">Paiements mobiles (30 j)</div><div class="valeur">{{ nb_mobile_periode|intcomma }}</div><div class="sous-texte">{{ taux_mobile }} % réussis · {{ volume_mobile|floatformat:0|intcomma }} FCFA</div></div>
+  {% if user.est_administrateur %}
+  <div class="carte carte-stat"><div class="icone bg-rouge">🚨</div><div class="libelle">Alertes fraude ouvertes</div><div class="valeur"><span id="compteur-alertes-dashboard">{{ nb_alertes_ouvertes }}</span></div><div class="sous-texte">{{ nb_alertes_critiques }} critique{{ nb_alertes_critiques|pluralize }} · <a href="{% url 'risques:alertes' %}">instruire</a></div></div>
+  {% endif %}
+  <div class="carte carte-stat"><div class="icone bg-orange">🪪</div><div class="libelle">KYC en attente</div><div class="valeur">{{ nb_kyc_en_attente }}</div><div class="sous-texte"><a href="{% url 'administration:kyc_dossiers' %}?statut=EN_ATTENTE">Accepter ou rejeter</a></div></div>
+  <div class="carte carte-stat"><div class="icone bg-vert">🧾</div><div class="libelle">Frais perçus (14 j)</div><div class="valeur">{{ frais_periode|floatformat:0|intcomma }} FCFA</div></div>
+</div>
+
+<div class="grille-graphiques">
+  <div class="carte">
+    <h3 class="premier-titre">Volume des transactions réussies — 14 derniers jours</h3>
+    <div class="conteneur-graphique"><canvas id="graphiqueVolumeAdmin"></canvas></div>
+  </div>
+  <div class="carte">
+    <h3 class="premier-titre">Répartition par type d'opération</h3>
+    <div class="conteneur-graphique"><canvas id="graphiqueTypesAdmin"></canvas></div>
+  </div>
+</div>
+
+<div class="carte" style="margin-bottom:16px;">
+  <div class="page-titre">
+    <h3 style="margin:0;">Activité en temps réel — 60 dernières minutes</h3>
+    <span style="font-size:0.8rem; color:var(--gris-texte);">
+      <span style="color:var(--vert); font-weight:600;">● Direct</span>
+      · actualisé à <span id="horodatage-temps-reel-admin">—</span>
+    </span>
+  </div>
+  <div class="conteneur-graphique"><canvas id="graphiqueTempsReelAdmin"></canvas></div>
+  <p style="font-size:0.8rem; color:var(--gris-texte); margin:8px 0 0;">
+    Transactions bancaires réussies et paiements mobiles réussis, par tranche de 5 minutes.
+    Volume des transactions sur la fenêtre : <strong id="volume-temps-reel-admin">—</strong> FCFA.
+    Actualisation automatique toutes les 15 secondes.
+  </p>
+</div>
+
+<div class="deux-colonnes">
+  <div class="carte">
+    <h3 class="premier-titre">Détail par type</h3>
+    <table class="tableau-donnees">
+      <thead><tr><th>Type</th><th>Nombre</th></tr></thead>
+      <tbody>
+      {% for ligne in repartition_par_type %}
+        <tr><td>{{ ligne.libelle }}</td><td>{{ ligne.total|intcomma }}</td></tr>
+      {% empty %}<tr><td colspan="2">Aucune donnée.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="carte">
+    <div class="page-titre"><h3 style="margin:0;">Dernières transactions</h3><a href="{% url 'administration:supervision_transactions' %}">Voir tout →</a></div>
+    <table class="tableau-donnees">
+      <thead><tr><th>Type</th><th>Montant</th><th>Statut</th></tr></thead>
+      <tbody>
+      {% for t in dernieres_transactions %}
+        <tr>
+          <td>{{ t.get_type_transaction_display }}</td>
+          <td>{{ t.montant|floatformat:0|intcomma }} FCFA</td>
+          <td>
+            {% if t.statut == "REUSSIE" %}<span class="badge badge-succes">Réussie</span>
+            {% elif t.statut == "EN_ATTENTE" %}<span class="badge badge-attente">En attente</span>
+            {% else %}<span class="badge badge-echec">Échouée</span>{% endif %}
+          </td>
+        </tr>
+      {% empty %}<tr><td colspan="3">Aucune transaction.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/chart.umd.min.js' %}"></script>
+<script>
+(function () {
+  const volumes = {{ volumes_par_jour|safe }};
+  const labels = {{ labels_jours|safe }};
+  const canvasVolume = document.getElementById("graphiqueVolumeAdmin");
+  if (canvasVolume && window.Chart) {
+    new Chart(canvasVolume, {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Volume (FCFA)",
+          data: volumes,
+          borderColor: "#1656d1",
+          backgroundColor: "rgba(22,86,209,0.08)",
+          fill: true,
+          tension: 0.35,
+          pointRadius: 2,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: true } },
+        scales: { y: { beginAtZero: true, ticks: { callback: (v) => new Intl.NumberFormat("fr-FR").format(v) } } },
+      },
+    });
+  }
+
+  const canvasTypes = document.getElementById("graphiqueTypesAdmin");
+  if (canvasTypes && window.Chart) {
+    new Chart(canvasTypes, {
+      type: "doughnut",
+      data: {
+        labels: [{% for ligne in repartition_par_type %}"{{ ligne.libelle|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+          data: [{% for ligne in repartition_par_type %}{{ ligne.total }}{% if not forloop.last %},{% endif %}{% endfor %}],
+          backgroundColor: ["#1656d1", "#1fa870", "#f59e0b", "#8b5cf6", "#e5484d", "#0ea5a4", "#64748b", "#db2777"],
+        }],
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } },
+    });
+  }
+
+  {% if user.est_administrateur %}
+  const compteur = document.getElementById("compteur-alertes-dashboard");
+  if (compteur) {
+    setInterval(async function () {
+      try {
+        const reponse = await fetch("{% url 'risques:alertes_non_lues_json' %}", { credentials: "same-origin" });
+        if (!reponse.ok) return;
+        const donnees = await reponse.json();
+        compteur.textContent = donnees.nouvelles;
+      } catch (erreur) { /* prochain cycle */ }
+    }, 30000);
+  }
+  {% endif %}
+
+  const canvasTempsReelAdmin = document.getElementById("graphiqueTempsReelAdmin");
+  let graphiqueTempsReelAdmin = null;
+  if (canvasTempsReelAdmin && window.Chart) {
+    graphiqueTempsReelAdmin = new Chart(canvasTempsReelAdmin, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: "Transactions réussies",
+            data: [],
+            borderColor: "#1656d1",
+            backgroundColor: "rgba(22,86,209,0.08)",
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2,
+          },
+          {
+            label: "Paiements mobiles réussis",
+            data: [],
+            borderColor: "#1fa870",
+            backgroundColor: "rgba(31,168,112,0.08)",
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { position: "top" } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      },
+    });
+  }
+
+  const horodatageTempsReelAdmin = document.getElementById("horodatage-temps-reel-admin");
+  const volumeTempsReelAdmin = document.getElementById("volume-temps-reel-admin");
+  async function rafraichirActiviteTempsReel() {
+    try {
+      const reponse = await fetch("{% url 'administration:activite_temps_reel' %}", {
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      if (!reponse.ok) throw new Error("HTTP " + reponse.status);
+      const donnees = await reponse.json();
+      if (graphiqueTempsReelAdmin) {
+        graphiqueTempsReelAdmin.data.labels = donnees.labels;
+        graphiqueTempsReelAdmin.data.datasets[0].data = donnees.transactions;
+        graphiqueTempsReelAdmin.data.datasets[1].data = donnees.paiements_mobiles;
+        graphiqueTempsReelAdmin.update("none");
+      }
+      if (horodatageTempsReelAdmin) horodatageTempsReelAdmin.textContent = donnees.horodatage;
+      if (volumeTempsReelAdmin) {
+        volumeTempsReelAdmin.textContent = new Intl.NumberFormat("fr-FR").format(
+          Math.round(donnees.volume_transactions)
+        );
+      }
+    } catch (erreur) {
+      if (horodatageTempsReelAdmin) horodatageTempsReelAdmin.textContent = "indisponible";
+    }
+  }
+  if (graphiqueTempsReelAdmin) {
+    rafraichirActiviteTempsReel();
+    setInterval(rafraichirActiviteTempsReel, 15000);
+  }
+})();
+</script>
+{% endblock %}

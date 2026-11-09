@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Arrondi automatique{% endblock %}
+{% block contenu %}
+<a href="{% url 'epargne:tableau_epargne' %}" class="lien-retour">← Retour à l'épargne</a>
+<div class="page-titre"><h1>🪙 Arrondi automatique</h1></div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte formulaire-carte" style="margin:0; max-width:none;">
+    <h3 class="premier-titre">Configuration</h3>
+    <p class="texte-petit" style="margin-top:0;">
+      À chaque retrait ou virement sortant effectué depuis le compte choisi, le montant est
+      arrondi au multiple supérieur. La différence est transférée sur votre compte d'épargne.
+      Exemple avec un multiple de 1 000 FCFA : un retrait de 4 300 FCFA déclenche un arrondi de
+      700 FCFA.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      {% for erreur in formulaire.non_field_errors %}
+        <div class="message erreur">{{ erreur }}</div>
+      {% endfor %}
+      {% for champ in formulaire %}
+        <div class="groupe-champ">
+          {% if champ.field.widget.input_type == "checkbox" %}
+            <label class="case-a-cocher">{{ champ }} {{ champ.label }}</label>
+          {% else %}
+            <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+            {{ champ }}
+          {% endif %}
+          {% if champ.help_text %}<div class="aide">{{ champ.help_text }}</div>{% endif %}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton" style="width:100%;">
+        {% if config %}Enregistrer la configuration{% else %}Activer l'arrondi{% endif %}
+      </button>
+    </form>
+  </div>
+
+  <div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">État actuel</h3>
+      {% if config %}
+        <div class="regle-frais"><span>Statut</span><strong>{% if config.actif %}Activé{% else %}Désactivé{% endif %}</strong></div>
+        <div class="regle-frais"><span>Compte des dépenses</span><strong>{{ config.compte_source.numero_compte }}</strong></div>
+        <div class="regle-frais"><span>Compte d'épargne</span><strong>{{ config.compte_epargne.numero_compte }}</strong></div>
+        <div class="regle-frais"><span>Multiple</span><strong>{{ config.multiple }} FCFA</strong></div>
+        <div class="regle-frais"><span>Objectif alimenté</span><strong>{% if config.objectif %}{{ config.objectif.nom }}{% else %}Aucun{% endif %}</strong></div>
+      {% else %}
+        <p class="texte-petit" style="margin-bottom:0;">Aucune configuration enregistrée.</p>
+      {% endif %}
+    </div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Comptes d'épargne</h3>
+      {% for compte in comptes_epargne %}
+        <div class="regle-frais">
+          <span>{{ compte.numero_compte }}</span>
+          <strong>{{ compte.solde|floatformat:0|intcomma }} FCFA</strong>
+        </div>
+      {% empty %}
+        <p class="texte-petit" style="margin-bottom:0;">Aucun compte d'épargne actif.</p>
+      {% endfor %}
+    </div>
+    <div class="encart-info">
+      🔒 L'arrondi est ignoré si le solde est insuffisant ou si un plafond est atteint :
+      l'opération principale n'échoue jamais à cause de l'arrondi.
+    </div>
+  </div>
+</div>
+{% endblock %}

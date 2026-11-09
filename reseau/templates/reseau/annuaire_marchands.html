@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block titre %}Marchands partenaires{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🛍️ Marchands partenaires</h1>
+  {% if user.est_agent or user.est_administrateur %}
+    <a href="{% url 'reseau:annuaire_agents' %}" class="bouton bouton-secondaire">🏪 Réseau d'agents</a>
+  {% else %}
+    <a href="{% url 'reseau:espace_marchand' %}" class="bouton bouton-secondaire">Mon espace marchand</a>
+  {% endif %}
+</div>
+
+<div class="message info">
+  Le paiement d'un marchand s'effectue via le QR code ou le lien qu'il vous présente.
+  Ces encaissements sont réglés entre comptes internes de la démonstration, sans acquéreur réel.
+</div>
+
+<div class="carte" style="margin-bottom:16px;">
+  <form method="get" class="barre-boutons" style="align-items:flex-end;">
+    <div class="groupe-champ" style="margin:0; min-width:220px;">
+      <label for="recherche-marchand">Rechercher</label>
+      <input type="text" id="recherche-marchand" name="q" value="{{ recherche }}" placeholder="Nom, code, ville, activité…">
+    </div>
+    <div class="groupe-champ" style="margin:0; min-width:190px;">
+      <label for="categorie-marchand">Catégorie</label>
+      <select name="categorie" id="categorie-marchand">
+        <option value="">Toutes les catégories</option>
+        {% for c in categories %}
+          <option value="{{ c }}" {% if categorie == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="bouton">Rechercher</button>
+    <a href="{% url 'reseau:annuaire_marchands' %}" class="bouton bouton-secondaire">Réinitialiser</a>
+  </form>
+</div>
+
+{% if marchands %}
+  <div class="grille-cartes">
+    {% for marchand in marchands %}
+      <div class="carte">
+        <div class="objectif-entete">
+          <div>
+            <h3 style="margin:0 0 4px;">{{ marchand.nom }}</h3>
+            <div class="texte-petit">Code : <strong>{{ marchand.code_marchand }}</strong></div>
+          </div>
+          <span class="badge badge-succes">Actif</span>
+        </div>
+        <div class="regle-frais"><span>Activité</span><strong>{{ marchand.categorie|default:"Non renseignée" }}</strong></div>
+        <div class="regle-frais"><span>Ville</span><strong>{{ marchand.ville|default:"Non renseignée" }}</strong></div>
+        {% if marchand.adresse %}
+          <div class="regle-frais"><span>Adresse</span><strong>{{ marchand.adresse }}</strong></div>
+        {% endif %}
+        <p class="texte-petit" style="margin-top:8px;">
+          Demandez au marchand son QR code pour régler un achat depuis votre compte bancaire.
+        </p>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="carte">
+    <p>Aucun marchand actif ne correspond à votre recherche.</p>
+  </div>
+{% endif %}
+{% endblock %}

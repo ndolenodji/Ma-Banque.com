@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titre %}Ouvrir un ticket{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>➕ Ouvrir un ticket support</h1>
+  <a href="{% url 'support:mes_tickets' %}" class="bouton bouton-secondaire">← Mes tickets</a>
+</div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte formulaire-carte" style="max-width:none; margin:0;">
+    <h3 class="premier-titre">Votre demande</h3>
+    {% if formulaire.non_field_errors %}
+      <div class="message erreur">{{ formulaire.non_field_errors|join:" " }}</div>
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      {% for champ in formulaire %}
+        <div class="groupe-champ">
+          <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+          {{ champ }}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton" style="width:100%;">Envoyer au support</button>
+    </form>
+  </div>
+
+  <aside class="carte">
+    <h3 class="premier-titre">Pour un traitement rapide</h3>
+    <ul class="texte-petit" style="line-height:1.9; padding-left:18px;">
+      <li>Indiquez la référence de la transaction ou du ticket concerné.</li>
+      <li>Précisez la date, le montant et le compte impliqués.</li>
+      <li>Décrivez le résultat attendu et le résultat observé.</li>
+      <li>Ne joignez jamais de mot de passe, PIN ou code 2FA.</li>
+    </ul>
+    <div class="encart-info">
+      Les données bancaires sensibles ne doivent pas être transmises dans un ticket.
+      Le support peut consulter les opérations nécessaires depuis le back-office sécurisé.
+    </div>
+    <p class="texte-petit" style="margin-top:12px;">
+      Consultez d'abord la <a href="{% url 'support:faq' %}">FAQ</a> : la réponse s'y trouve peut-être déjà.
+    </p>
+  </aside>
+</div>
+{% endblock %}

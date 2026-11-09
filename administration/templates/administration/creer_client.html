@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titre %}Créer un client{% endblock %}
+{% block contenu %}
+<a href="{% url 'administration:supervision_clients' %}" class="lien-retour">← Retour aux clients</a>
+<div class="page-titre"><h1>👤 Créer un compte client</h1></div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte formulaire-carte" style="margin:0; max-width:none;">
+    <p style="color:var(--gris-texte);">
+      L'administrateur crée l'identité du client et son premier compte bancaire.
+      Le client devra ensuite suivre la procédure KYC pour faire vérifier sa pièce d'identité.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      {% for erreur in formulaire.non_field_errors %}<div class="message erreur">{{ erreur }}</div>{% endfor %}
+      {% for champ in formulaire.visible_fields %}
+        <div class="groupe-champ">
+          <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+          {{ champ }}
+          {% if champ.help_text %}<div class="aide">{{ champ.help_text }}</div>{% endif %}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton" style="width:100%;">Créer le client et son compte</button>
+    </form>
+  </div>
+
+  <aside class="carte">
+    <h3 class="premier-titre">Règles appliquées</h3>
+    <ul class="texte-petit" style="padding-left:18px; line-height:1.9;">
+      <li>Le rôle est fixé à <strong>Client</strong> ; aucun privilège administrateur n'est accordé.</li>
+      <li>Le mot de passe est validé par les règles Django et n'est jamais journalisé.</li>
+      <li>Le premier compte est actif, avec un solde initial de 0 FCFA.</li>
+      <li>La création est tracée dans le journal d'audit et notifiée au client.</li>
+      <li>La vérification KYC reste une décision humaine distincte.</li>
+    </ul>
+    <div class="encart-info">
+      Communiquez l'identifiant et le mot de passe au client par un canal sécurisé.
+      Ne les envoyez jamais par SMS ou e-mail en clair.
+    </div>
+  </aside>
+</div>
+{% endblock %}

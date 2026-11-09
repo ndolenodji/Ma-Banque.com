@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block titre %}{{ titre }}{% endblock %}
+{% block contenu %}
+<div class="page-titre"><h1>{{ titre }}</h1></div>
+<div class="carte" style="text-align:center; padding:50px 20px;">
+  <div style="font-size:2.5rem;">🚧</div>
+  <h3>Bientôt disponible</h3>
+  <p style="color:var(--gris-texte); max-width:480px; margin:0 auto;">{{ description }}</p>
+  <a href="{% url 'comptes:tableau_de_bord' %}" class="bouton" style="margin-top:16px;">Retour au tableau de bord</a>
+</div>
+{% endblock %}

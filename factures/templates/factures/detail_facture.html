@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Facture {{ facture.reference }}{% endblock %}
+{% block contenu %}
+<a href="{% url 'factures:tableau_factures' %}" class="lien-retour">← Retour aux factures</a>
+<div class="page-titre">
+  <h1>🧾 Facture {{ facture.reference }}</h1>
+  <span class="badge {% if facture.statut == 'PAYEE' %}badge-succes{% elif facture.statut == 'EN_ATTENTE' %}badge-attente{% else %}badge-echec{% endif %}">
+    {{ facture.get_statut_display }}
+  </span>
+</div>
+
+<div class="grille-deux-colonnes">
+  <div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Détail</h3>
+      <div class="regle-frais"><span>Fournisseur (simulation)</span><strong>{{ facture.fournisseur.nom }}</strong></div>
+      <div class="regle-frais"><span>Référence externe</span><strong>{{ facture.reference_externe|default:"—" }}</strong></div>
+      <div class="regle-frais"><span>Libellé</span><strong>{{ facture.libelle|default:"—" }}</strong></div>
+      <div class="regle-frais"><span>Montant</span><strong>{{ facture.montant|floatformat:0|intcomma }} FCFA</strong></div>
+      <div class="regle-frais"><span>Date d'émission</span><strong>{{ facture.date_emission|date:"d/m/Y" }}</strong></div>
+      <div class="regle-frais"><span>Date d'échéance</span><strong>{{ facture.date_echeance|date:"d/m/Y" }}</strong></div>
+      {% if facture.est_en_retard %}<div class="regle-frais"><span>Alerte</span><strong style="color:var(--rouge);">En retard</strong></div>{% endif %}
+      {% if facture.date_paiement %}
+      <div class="regle-frais"><span>Payée le</span><strong>{{ facture.date_paiement|date:"d/m/Y H:i" }}</strong></div>
+      {% endif %}
+      {% if facture.transaction %}
+      <div class="regle-frais"><span>Transaction</span><strong>{{ facture.transaction.reference }}</strong></div>
+      <p class="texte-petit" style="margin-bottom:0;">
+        <a href="{% url 'transactions:telecharger_recu' facture.transaction.pk %}" class="lien-inline">Télécharger le reçu PDF</a>
+      </p>
+      {% endif %}
+    </div>
+
+    <div class="encart-info">
+      🧪 Fournisseur simulé. Le paiement débite réellement votre compte, mais aucun règlement
+      externe auprès du fournisseur n'est effectué.
+    </div>
+  </div>
+
+  <div>
+    {% if facture.statut == "EN_ATTENTE" and formulaire_paiement %}
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Payer la facture</h3>
+      <div class="regle-frais"><span>Montant de la facture</span><strong>{{ facture.montant|floatformat:0|intcomma }} FCFA</strong></div>
+      <div class="regle-frais"><span>Frais applicables</span><strong>{{ frais|floatformat:0|intcomma }} FCFA</strong></div>
+      <div class="regle-frais"><span>Total débité</span><strong>{{ total|floatformat:0|intcomma }} FCFA</strong></div>
+      <form method="post" style="margin-top:14px;">
+        {% csrf_token %}
+        {{ formulaire_paiement.cle_idempotence }}
+        {% for erreur in formulaire_paiement.non_field_errors %}
+          <div class="message erreur">{{ erreur }}</div>
+        {% endfor %}
+        {% for champ in formulaire_paiement.visible_fields %}
+          <div class="groupe-champ">
+            <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+            {{ champ }}
+            {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+        <button type="submit" class="bouton" style="width:100%;">Confirmer le paiement</button>
+      </form>
+    </div>
+
+    <div class="carte">
+      <h3 class="premier-titre">Annuler la facture</h3>
+      <p class="texte-petit" style="margin-top:0;">
+        Une facture non payée peut être annulée. Aucun débit n'est effectué.
+      </p>
+      <form method="post" action="{% url 'factures:annuler_facture' facture.pk %}" onsubmit="return confirm('Annuler cette facture ?');">
+        {% csrf_token %}
+        <button type="submit" class="bouton bouton-danger" style="width:100%;">Annuler la facture</button>
+      </form>
+    </div>
+    {% elif facture.statut == "PAYEE" %}
+    <div class="encart-info">
+      ✅ Facture payée. Le débit est visible dans votre historique et le reçu est disponible.
+    </div>
+    {% else %}
+    <div class="encart-info">Cette facture n'est plus payable (statut : {{ facture.get_statut_display|lower }}).</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

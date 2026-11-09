@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Enregistrer une facture{% endblock %}
+{% block contenu %}
+<a href="{% url 'factures:tableau_factures' %}" class="lien-retour">← Retour aux factures</a>
+<div class="page-titre"><h1>🧾 Enregistrer une facture</h1></div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte formulaire-carte" style="margin:0; max-width:none;">
+    <h3 class="premier-titre">Informations de la facture</h3>
+    <form method="post">
+      {% csrf_token %}
+      {% for erreur in formulaire.non_field_errors %}
+        <div class="message erreur">{{ erreur }}</div>
+      {% endfor %}
+      {% for champ in formulaire %}
+        <div class="groupe-champ">
+          <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+          {{ champ }}
+          {% if champ.help_text %}<div class="aide">{{ champ.help_text }}</div>{% endif %}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton" style="width:100%;">Enregistrer la facture</button>
+    </form>
+  </div>
+
+  <div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Fournisseurs de démonstration</h3>
+      {% for fournisseur in fournisseurs %}
+        <div class="regle-frais">
+          <span>{{ fournisseur.nom }}</span>
+          <strong class="texte-petit">{{ fournisseur.code }}</strong>
+        </div>
+      {% empty %}
+        <p class="texte-petit" style="margin-bottom:0;">Aucun fournisseur actif.</p>
+      {% endfor %}
+      <p class="texte-petit" style="margin-top:10px; margin-bottom:0;">
+        Ces fournisseurs sont simulés : aucun raccordement externe n'est effectué.
+      </p>
+    </div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Références mémorisées</h3>
+      {% for reference in references %}
+        <div class="regle-frais">
+          <span>{{ reference.fournisseur.nom }}</span>
+          <strong>{{ reference.reference_client }}</strong>
+        </div>
+      {% empty %}
+        <p class="texte-petit" style="margin-bottom:0;">Aucune référence enregistrée.</p>
+      {% endfor %}
+    </div>
+    <div class="encart-info">
+      🔒 Un paiement débite réellement votre compte. Vérifiez le montant et l'échéance
+      avant de valider.
+    </div>
+  </div>
+</div>
+{% endblock %}

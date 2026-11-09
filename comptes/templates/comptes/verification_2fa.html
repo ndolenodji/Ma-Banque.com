@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titre %}Double authentification{% endblock %}
+{% block contenu %}
+<div style="max-width:420px; margin:40px auto;">
+  <div class="carte">
+    <h1 style="font-size:1.3rem; text-align:center;">🔐 Vérification en deux étapes</h1>
+    <p style="text-align:center; color:var(--gris-texte); font-size:0.88rem;">
+      Saisissez le code à 6 chiffres de votre application d'authentification pour le compte
+      <strong>{{ utilisateur_masque }}</strong>.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="groupe-champ">
+        <label for="code">Code à 6 chiffres ou code de secours</label>
+        <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code"
+               autofocus required style="letter-spacing:0.2em; font-size:1.2rem; text-align:center;">
+      </div>
+      <button type="submit" class="bouton" style="width:100%;">Valider</button>
+    </form>
+    <p style="font-size:0.8rem; color:var(--gris-texte); margin-bottom:0;">
+      Vous pouvez aussi utiliser un code de secours (format XXXX-XXXX-XXXX). Chaque code ne fonctionne qu'une fois.
+    </p>
+    <p style="text-align:center; margin-bottom:0;"><a href="{% url 'comptes:connexion' %}">← Revenir à la connexion</a></p>
+  </div>
+</div>
+{% endblock %}

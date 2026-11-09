@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Recharger mon compte{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>📱 Recharger mon compte bancaire</h1>
+  <div class="barre-boutons">
+    <a href="{% url 'paiement_mobile:retrait_mobile' %}" class="bouton bouton-secondaire">💸 Faire un retrait mobile</a>
+    <a href="{% url 'paiement_mobile:historique' %}" class="bouton bouton-secondaire">🧾 Historique</a>
+  </div>
+</div>
+
+<div class="message info">
+  <strong>Démonstration :</strong> les opérateurs sont simulés par un microservice local explicitement identifié.
+  Aucun portefeuille mobile money réel n'est débité ou crédité.
+</div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte formulaire-carte" style="max-width:none; margin:0;">
+    <h3 class="premier-titre">Demande de recharge (cash-in)</h3>
+    <p style="color:var(--gris-texte); font-size:0.88rem;">
+      L'argent part de votre portefeuille mobile money et vient créditer le compte bancaire choisi.
+      Le compte n'est crédité qu'après confirmation du statut <strong>Réussi</strong> par l'opérateur.
+    </p>
+
+    {% if formulaire.non_field_errors %}
+      <div class="message erreur">{{ formulaire.non_field_errors|join:" " }}</div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="cle_idempotence" value="{{ cle_idempotence }}">
+      {% for champ in formulaire %}
+        <div class="groupe-champ">
+          <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+          {{ champ }}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton" style="width:100%;">Envoyer la demande de recharge</button>
+    </form>
+  </div>
+
+  <aside class="carte">
+    <h3 class="premier-titre">Opérateurs disponibles</h3>
+    <div class="liste-operateurs">
+      {% for info in operateurs %}
+        <div class="operateur-ligne">
+          <div>
+            <strong>{{ info.libelle }}</strong>
+            {% if info.disponible_tchad %}
+              <span class="badge badge-succes">Tchad</span>
+            {% else %}
+              <span class="badge badge-attente">Démo</span>
+            {% endif %}
+            <div class="texte-petit">{{ info.note }}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <h3>Comment ça marche ?</h3>
+    <ol class="texte-petit" style="padding-left:18px; line-height:1.8;">
+      <li>Vous choisissez un compte bancaire actif et un opérateur.</li>
+      <li>La demande est envoyée au service de paiement simulé.</li>
+      <li>Le compte est crédité uniquement lorsque le statut passe à <strong>Réussi</strong>.</li>
+    </ol>
+
+    <div class="encart-info">
+      Aucun frais bancaire n'est prélevé pour une recharge (cash-in).
+      Les éventuels frais de l'opérateur mobile restent à sa charge et ne sont pas simulés ici.
+    </div>
+  </aside>
+</div>
+{% endblock %}

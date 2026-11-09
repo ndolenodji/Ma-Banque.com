@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Statut du paiement mobile{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>Suivi du paiement mobile</h1>
+  <a href="{% url 'paiement_mobile:historique' %}" class="bouton bouton-secondaire">🧾 Historique</a>
+</div>
+
+{% if paiement.est_simule %}
+  <div class="message attention">
+    <strong>Opération simulée :</strong> aucune transaction monétaire réelle n'a été effectuée chez
+    {{ paiement.get_operateur_display }}. Les mouvements bancaires ci-dessous sont enregistrés dans
+    l'application de démonstration.
+  </div>
+{% endif %}
+
+<div class="grille-deux-colonnes">
+  <div class="carte">
+    <div class="entete-suivi">
+      <div>
+        <div class="texte-petit">Référence interne</div>
+        <strong style="font-size:1.05rem;">{{ paiement.reference_transaction }}</strong>
+      </div>
+      <div>
+        {% if paiement.statut == "REUSSI" %}<span class="badge badge-succes">Réussi</span>
+        {% elif paiement.statut == "EN_ATTENTE" %}<span class="badge badge-attente">En attente</span>
+        {% elif paiement.statut == "ANNULE" %}<span class="badge badge-echec">Annulé</span>
+        {% else %}<span class="badge badge-echec">Échoué</span>{% endif %}
+      </div>
+    </div>
+
+    <div class="regle-frais"><span>Opération</span><strong>{{ paiement.get_type_operation_display }}</strong></div>
+    <div class="regle-frais"><span>Opérateur</span><strong>{{ paiement.get_operateur_display }}</strong></div>
+    <div class="regle-frais"><span>Numéro mobile money</span><strong>{{ paiement.numero_telephone }}</strong></div>
+    <div class="regle-frais"><span>Compte bancaire</span><strong>N° {{ paiement.compte_bancaire.numero_compte }}</strong></div>
+    <div class="regle-frais"><span>Montant demandé</span><strong>{{ paiement.montant|floatformat:0|intcomma }} FCFA</strong></div>
+    {% if paiement.frais %}
+      <div class="regle-frais"><span>Frais de l'opération</span><strong>{{ paiement.frais|floatformat:0|intcomma }} FCFA</strong></div>
+      <div class="regle-frais"><span>Total débité</span><strong>{{ paiement.montant_total|floatformat:0|intcomma }} FCFA</strong></div>
+    {% endif %}
+    <div class="regle-frais"><span>Demande créée le</span><strong>{{ paiement.date_creation|date:"d/m/Y à H:i" }}</strong></div>
+    {% if paiement.date_finalisation %}
+      <div class="regle-frais"><span>Finalisée le</span><strong>{{ paiement.date_finalisation|date:"d/m/Y à H:i" }}</strong></div>
+    {% endif %}
+    {% if paiement.reference_externe %}
+      <div class="regle-frais"><span>Référence opérateur (simulée)</span><strong>{{ paiement.reference_externe }}</strong></div>
+    {% endif %}
+
+    <div style="margin-top:16px;">
+      {% if paiement.statut == "EN_ATTENTE" %}
+        <div class="message info" style="margin-bottom:10px;">
+          La demande est en cours de traitement.{% if paiement.type_operation == "RETRAIT_MOBILE" %}
+          Le montant et les frais sont réservés sur votre compte ; ils seront remboursés automatiquement en cas d'échec.{% endif %}
+          Le statut est vérifié à chaque actualisation de cette page.
+        </div>
+        <div class="barre-boutons">
+          <a href="{% url 'paiement_mobile:statut' paiement.id %}" class="bouton">🔄 Actualiser maintenant</a>
+          <span class="texte-petit" id="compte-a-rebours" data-delai="20">Actualisation automatique dans 20 s</span>
+        </div>
+      {% elif paiement.statut == "REUSSI" %}
+        <div class="message succes">
+          {% if paiement.type_operation == "RECHARGE" %}
+            Recharge confirmée : votre compte bancaire a été crédité de
+            {{ paiement.montant|floatformat:0|intcomma }} FCFA.
+          {% else %}
+            Retrait confirmé : le débit de {{ paiement.montant_total|floatformat:0|intcomma }} FCFA
+            (frais inclus) est définitif et le portefeuille mobile money a été crédité dans la simulation.
+          {% endif %}
+        </div>
+      {% elif paiement.statut == "ECHOUE" %}
+        <div class="message erreur">
+          L'opération a échoué{% if paiement.message_erreur %} : {{ paiement.message_erreur }}{% endif %}
+        </div>
+        {% if paiement.transaction_remboursement %}
+          <div class="message succes">
+            Le débit a été intégralement remboursé sur le compte
+            N° {{ paiement.compte_bancaire.numero_compte }}
+            (référence {{ paiement.transaction_remboursement.reference }}).
+          </div>
+        {% endif %}
+      {% elif paiement.statut == "ANNULE" %}
+        <div class="message attention">
+          L'opération a été annulée{% if paiement.message_erreur %} : {{ paiement.message_erreur }}{% endif %}.
+          {% if paiement.transaction_remboursement %}Le montant a été remboursé sur votre compte.{% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="barre-boutons" style="margin-top:16px;">
+      {% if paiement.statut == "ECHOUE" or paiement.statut == "ANNULE" %}
+        {% if paiement.type_operation == "RECHARGE" %}
+          <a href="{% url 'paiement_mobile:recharger' %}" class="bouton">Réessayer une recharge</a>
+        {% else %}
+          <a href="{% url 'paiement_mobile:retrait_mobile' %}" class="bouton">Réessayer un retrait</a>
+        {% endif %}
+      {% endif %}
+      <a href="{% url 'paiement_mobile:historique' %}" class="bouton bouton-secondaire">Retour à l'historique</a>
+    </div>
+  </div>
+
+  <aside class="carte">
+    <h3 class="premier-titre">Mouvements bancaires liés</h3>
+    <p class="texte-petit">
+      Compte {{ paiement.compte_bancaire.get_type_compte_display|lower }} n°
+      {{ paiement.compte_bancaire.numero_compte }} —
+      solde comptable actuel :
+      <strong>{{ paiement.compte_bancaire.solde|floatformat:0|intcomma }} FCFA</strong>.
+    </p>
+
+    {% if transaction_credit %}
+      <div class="mouvement-mobile">
+        <div>
+          <span class="badge badge-succes">Crédit</span>
+          <div class="texte-petit">{{ transaction_credit.reference }}</div>
+          <div class="texte-petit">Statut : {{ transaction_credit.get_statut_display }}</div>
+        </div>
+        <strong>+{{ transaction_credit.montant|floatformat:0|intcomma }} FCFA</strong>
+      </div>
+      <a href="{% url 'transactions:telecharger_recu' transaction_credit.id %}" class="bouton bouton-secondaire" style="width:100%; margin-top:8px;">📄 Reçu PDF du crédit</a>
+    {% elif transaction_debit %}
+      <div class="mouvement-mobile">
+        <div>
+          <span class="badge {% if transaction_debit.statut == 'REMBOURSEE' %}badge-attente{% else %}badge-info{% endif %}">Débit</span>
+          <div class="texte-petit">{{ transaction_debit.reference }}</div>
+          <div class="texte-petit">Statut : {{ transaction_debit.get_statut_display }}</div>
+        </div>
+        <strong>-{{ transaction_debit.montant|floatformat:0|intcomma }} FCFA</strong>
+      </div>
+      {% if transaction_debit.frais %}
+        <div class="regle-frais"><span>Frais associés</span><strong>{{ transaction_debit.frais|floatformat:0|intcomma }} FCFA</strong></div>
+      {% endif %}
+      <a href="{% url 'transactions:telecharger_recu' transaction_debit.id %}" class="bouton bouton-secondaire" style="width:100%; margin-top:8px;">📄 Reçu PDF du débit</a>
+    {% else %}
+      <div class="encart-info">
+        Aucun mouvement bancaire n'est encore enregistré. Pour une recharge, le crédit n'intervient
+        qu'après la confirmation de réussite.
+      </div>
+    {% endif %}
+
+    {% if paiement.transaction_remboursement %}
+      <div class="mouvement-mobile" style="margin-top:12px;">
+        <div>
+          <span class="badge badge-succes">Remboursement</span>
+          <div class="texte-petit">{{ paiement.transaction_remboursement.reference }}</div>
+        </div>
+        <strong>+{{ paiement.transaction_remboursement.montant|floatformat:0|intcomma }} FCFA</strong>
+      </div>
+      <a href="{% url 'transactions:telecharger_recu' paiement.transaction_remboursement.id %}" class="bouton bouton-secondaire" style="width:100%; margin-top:8px;">📄 Reçu PDF du remboursement</a>
+    {% endif %}
+
+    <h3>Statuts possibles</h3>
+    <ul class="texte-petit" style="padding-left:18px; line-height:1.7;">
+      <li><strong>En attente</strong> : le service simulé n'a pas encore rendu sa décision.</li>
+      <li><strong>Réussi</strong> : le mouvement bancaire est confirmé.</li>
+      <li><strong>Échoué</strong> : un retrait est remboursé automatiquement.</li>
+      <li><strong>Annulé</strong> : l'opération n'a pas abouti ; aucun débit ne reste appliqué.</li>
+    </ul>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if paiement.statut == "EN_ATTENTE" %}
+<script>
+(function () {
+  var delai = 20;
+  var cible = document.getElementById("compte-a-rebours");
+  if (!cible) return;
+  window.setInterval(function () {
+    delai -= 1;
+    if (delai <= 0) {
+      window.location.reload();
+      return;
+    }
+    cible.textContent = "Actualisation automatique dans " + delai + " s";
+  }, 1000);
+})();
+</script>
+{% endif %}
+{% endblock %}

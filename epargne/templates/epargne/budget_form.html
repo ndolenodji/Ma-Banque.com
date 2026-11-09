@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Modifier un budget{% endblock %}
+{% block contenu %}
+<a href="{% url 'epargne:budgets' %}" class="lien-retour">← Retour aux budgets</a>
+<div class="page-titre"><h1>✏️ Modifier le budget — {{ budget.get_categorie_display }}</h1></div>
+
+<div class="carte formulaire-carte">
+  <form method="post">
+    {% csrf_token %}
+    {% for erreur in formulaire.non_field_errors %}
+      <div class="message erreur">{{ erreur }}</div>
+    {% endfor %}
+    {% for champ in formulaire %}
+      <div class="groupe-champ">
+        {% if champ.field.widget.input_type == "checkbox" %}
+          <label class="case-a-cocher">{{ champ }} {{ champ.label }}</label>
+        {% else %}
+          <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+          {{ champ }}
+        {% endif %}
+        {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+      </div>
+    {% endfor %}
+    <button type="submit" class="bouton" style="width:100%;">Enregistrer</button>
+  </form>
+</div>
+{% endblock %}

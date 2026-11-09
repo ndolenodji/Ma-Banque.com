@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titre %}Déposer de l'argent{% endblock %}
+{% block contenu %}
+<a href="{% url 'transactions:depots_retraits' %}" class="lien-retour">← Retour aux dépôts / retraits</a>
+<div class="page-titre"><h1>⬆️ Déposer de l'argent</h1></div>
+<div class="carte formulaire-carte">
+  <div class="encart-info" style="margin-bottom:16px;">
+    Le dépôt est crédité immédiatement sur votre compte et ne génère aucun frais.
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    {% for champ in formulaire.hidden_fields %}{{ champ }}{% endfor %}
+    {% for erreur in formulaire.non_field_errors %}<div class="message erreur">{{ erreur }}</div>{% endfor %}
+    {% for champ in formulaire.visible_fields %}
+      <div class="groupe-champ">
+        <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+        {{ champ }}
+        {% if champ.help_text %}<div class="aide">{{ champ.help_text }}</div>{% endif %}
+        {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+      </div>
+    {% endfor %}
+    <button type="submit" class="bouton" style="width:100%;">Confirmer le dépôt</button>
+  </form>
+</div>
+{% endblock %}

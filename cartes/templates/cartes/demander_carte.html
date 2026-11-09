@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Demander une carte{% endblock %}
+{% block contenu %}
+<a href="{% url 'cartes:mes_cartes' %}" class="lien-retour">← Retour à mes cartes</a>
+<div class="page-titre"><h1>💳 Demander une carte de démonstration</h1></div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte formulaire-carte" style="margin:0; max-width:none;">
+    <h3 class="premier-titre">Nouvelle carte</h3>
+    <form method="post">
+      {% csrf_token %}
+      {% for erreur in formulaire.non_field_errors %}
+        <div class="message erreur">{{ erreur }}</div>
+      {% endfor %}
+      {% for champ in formulaire %}
+        <div class="groupe-champ">
+          <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+          {{ champ }}
+          {% if champ.help_text %}<div class="aide">{{ champ.help_text }}</div>{% endif %}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton" style="width:100%;">Créer la carte</button>
+    </form>
+  </div>
+
+  <div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Ce que vous obtenez</h3>
+      <p class="texte-petit" style="margin-top:0;">
+        <strong>Carte virtuelle</strong> — activée immédiatement, idéale pour illustrer un paiement en ligne.
+        <br><br>
+        <strong>Carte physique</strong> — enregistrée à l'état « Demandée » : un agent doit l'activer avant utilisation.
+      </p>
+    </div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Plafonds par défaut</h3>
+      <div class="regle-frais"><span>Journalier</span><strong>500 000 FCFA</strong></div>
+      <div class="regle-frais"><span>Mensuel</span><strong>2 000 000 FCFA</strong></div>
+      <p class="texte-petit" style="margin-bottom:0;">Ces plafonds sont modifiables ensuite depuis la fiche de la carte.</p>
+    </div>
+    <div class="encart-info">
+      🔒 Aucun numéro de carte réel, CVV ou code PIN n'est demandé, généré ou stocké.
+      Le réseau affiché est un réseau de démonstration.
+    </div>
+  </div>
+</div>
+{% endblock %}

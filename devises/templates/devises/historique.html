@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Historique des conversions{% endblock %}
+{% block contenu %}
+<a href="{% url 'devises:taux' %}" class="lien-retour">← Retour aux devises</a>
+<div class="page-titre"><h1>🕐 Historique des conversions</h1></div>
+
+<div class="carte">
+  <div class="tableau-defilement">
+    <table class="tableau-donnees">
+      <thead>
+        <tr>
+          <th>Date</th><th>Référence</th><th>Compte source</th><th>Montant source</th>
+          <th>Compte destination</th><th>Montant crédité</th><th>Taux</th><th>Frais</th><th>Reçu</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for conversion in conversions %}
+        <tr>
+          <td>{{ conversion.date_creation|date:"d/m/Y H:i" }}</td>
+          <td><strong>{{ conversion.reference }}</strong></td>
+          <td>{{ conversion.compte_source.numero_compte }}</td>
+          <td>{{ conversion.montant_source|floatformat:0|intcomma }} {{ conversion.compte_source.code_devise }}</td>
+          <td>{{ conversion.compte_destination.numero_compte }}</td>
+          <td>{{ conversion.montant_destination|floatformat:0|intcomma }} {{ conversion.compte_destination.code_devise }}</td>
+          <td>{{ conversion.taux }}</td>
+          <td>{{ conversion.frais|floatformat:0|intcomma }} FCFA</td>
+          <td>
+            {% if conversion.transaction_source %}
+              <a href="{% url 'transactions:telecharger_recu' conversion.transaction_source.pk %}" class="lien-inline">PDF</a>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="9">Aucune conversion effectuée.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="texte-petit" style="margin:12px 0 0;">
+    Source des taux : {{ conversions.0.source_taux|default:"taux administrés" }}.
+    Chaque conversion est tracée par une transaction source et une transaction destination.
+  </p>
+</div>
+{% endblock %}

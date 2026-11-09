@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Alerte {{ alerte.reference }}{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🚨 Alerte {{ alerte.reference }}</h1>
+  <div class="barre-boutons">
+    <a href="{% url 'risques:alertes' %}" class="bouton bouton-secondaire">← Toutes les alertes</a>
+  </div>
+</div>
+
+<div class="grille-cartes">
+  <div class="carte carte-stat">
+    <div class="libelle">Score de risque</div>
+    <div class="valeur"><span class="score-fraude risque-{{ alerte.niveau|lower }}">{{ alerte.score }}/100</span></div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="libelle">Niveau</div>
+    <div class="valeur"><span class="badge risque-badge-{{ alerte.niveau|lower }}">{{ alerte.get_niveau_display }}</span></div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="libelle">Statut</div>
+    <div class="valeur"><span class="badge badge-statut-{{ alerte.statut|lower }}">{{ alerte.get_statut_display }}</span></div>
+  </div>
+  <div class="carte carte-stat">
+    <div class="libelle">Créée le</div>
+    <div class="valeur" style="font-size:1rem;">{{ alerte.date_creation|date:"d/m/Y H:i" }}</div>
+  </div>
+</div>
+
+<div class="deux-colonnes">
+  <div class="carte">
+    <h3 class="premier-titre">Client concerné</h3>
+    <p><strong>{{ alerte.utilisateur.get_full_name|default:alerte.utilisateur.username }}</strong><br>
+      <span class="texte-petit">Identifiant : {{ alerte.utilisateur.username }}<br>
+      Téléphone : {{ alerte.utilisateur.telephone|default:"—" }}<br>
+      Identité vérifiée : {{ alerte.utilisateur.identite_verifiee|yesno:"Oui,Non" }}</span>
+    </p>
+    <a href="{% url 'administration:detail_client' alerte.utilisateur.pk %}" class="bouton bouton-secondaire bouton-petit">Fiche client</a>
+  </div>
+
+  <div class="carte">
+    <h3 class="premier-titre">Opération à l'origine</h3>
+    {% if alerte.transaction %}
+      <p>
+        <strong>{{ alerte.transaction.get_type_transaction_display }}</strong> —
+        {{ alerte.transaction.montant|floatformat:0|intcomma }} FCFA
+        {% if alerte.transaction.frais %}<span class="texte-petit">(+ {{ alerte.transaction.frais|floatformat:0|intcomma }} frais)</span>{% endif %}<br>
+        <span class="texte-petit">
+          Référence : {{ alerte.transaction.reference }}<br>
+          Date : {{ alerte.transaction.date_transaction|date:"d/m/Y H:i" }}<br>
+          Canal : {{ alerte.transaction.get_canal_display }}<br>
+          Statut : {{ alerte.transaction.get_statut_display }}<br>
+          Source : {{ alerte.transaction.compte_source.numero_compte|default:"—" }}
+          {% if alerte.transaction.compte_destination %} → {{ alerte.transaction.compte_destination.numero_compte }}{% endif %}
+        </span>
+      </p>
+    {% elif alerte.paiement_mobile %}
+      <p>
+        <strong>{{ alerte.paiement_mobile.get_type_operation_display }}</strong> —
+        {{ alerte.paiement_mobile.montant|floatformat:0|intcomma }} FCFA<br>
+        <span class="texte-petit">
+          Opérateur : {{ alerte.paiement_mobile.get_operateur_display }}<br>
+          Référence : {{ alerte.paiement_mobile.reference_transaction }}<br>
+          Statut : {{ alerte.paiement_mobile.get_statut_display }}
+        </span>
+      </p>
+    {% else %}
+      <p>L'opération liée n'est plus disponible.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="carte">
+  <h3 class="premier-titre">Facteurs déclenchés</h3>
+  <table class="tableau-donnees">
+    <thead><tr><th>Règle</th><th>Points</th></tr></thead>
+    <tbody>
+      {% for regle in alerte.regles %}
+        <tr><td>{{ regle.libelle }}</td><td>+{{ regle.points }}</td></tr>
+      {% empty %}
+        <tr><td colspan="2">Aucun détail de règle enregistré.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="texte-petit" style="margin-top:14px;">{{ alerte.explication|linebreaksbr }}</p>
+  <div class="message info" style="margin-bottom:0;">
+    Aucun blocage de fonds n'est appliqué automatiquement. Les mesures conservatoires
+    éventuelles restent une décision humaine prise depuis la fiche client.
+  </div>
+</div>
+
+<div class="carte">
+  <h3 class="premier-titre">Instruction</h3>
+  {% if alerte.traite_par %}
+    <p class="texte-petit">Dernière action par {{ alerte.traite_par }} le {{ alerte.date_traitement|date:"d/m/Y H:i" }}.</p>
+  {% endif %}
+  {% if alerte.commentaire %}
+    <div class="message info">{{ alerte.commentaire|linebreaksbr }}</div>
+  {% endif %}
+
+  {% if alerte.statut == "NOUVELLE" %}
+    <form method="post" action="{% url 'risques:traiter' alerte.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="decision" value="EN_REVUE">
+      <div class="champ">
+        <label for="commentaire">Note de prise en charge (facultative)</label>
+        <textarea id="commentaire" name="commentaire" rows="3" maxlength="2000" placeholder="Contexte, vérifications effectuées…"></textarea>
+      </div>
+      <button type="submit" class="bouton">Prendre en revue</button>
+    </form>
+  {% elif alerte.statut == "EN_REVUE" %}
+    <form method="post" action="{% url 'risques:traiter' alerte.pk %}">
+      {% csrf_token %}
+      <div class="champ">
+        <label for="commentaire">Commentaire de décision (obligatoire)</label>
+        <textarea id="commentaire" name="commentaire" rows="4" maxlength="2000" required placeholder="Motif de la confirmation ou du rejet…"></textarea>
+      </div>
+      <div class="champ">
+        <label>Décision</label>
+        <label class="option-radio"><input type="radio" name="decision" value="CONFIRMEE" required> Confirmer le risque</label>
+        <label class="option-radio"><input type="radio" name="decision" value="REJETEE"> Rejeter (faux positif)</label>
+      </div>
+      <button type="submit" class="bouton">Enregistrer la décision</button>
+    </form>
+  {% else %}
+    <p>Cette alerte est clôturée : {{ alerte.get_statut_display }}. Les décisions sont définitives et journalisées.</p>
+  {% endif %}
+</div>
+
+{% if historique_client %}
+<div class="carte">
+  <h3 class="premier-titre">Autres alertes du même client</h3>
+  <table class="tableau-donnees">
+    <thead><tr><th>Référence</th><th>Date</th><th>Score</th><th>Statut</th></tr></thead>
+    <tbody>
+      {% for autre in historique_client %}
+        <tr>
+          <td><a href="{% url 'risques:detail_alerte' autre.pk %}">{{ autre.reference }}</a></td>
+          <td>{{ autre.date_creation|date:"d/m/Y H:i" }}</td>
+          <td>{{ autre.score }}/100</td>
+          <td>{{ autre.get_statut_display }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

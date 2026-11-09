@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Retirer de l'argent{% endblock %}
+{% block contenu %}
+<a href="{% url 'transactions:depots_retraits' %}" class="lien-retour">← Retour aux dépôts / retraits</a>
+<div class="page-titre"><h1>⬇️ Retirer de l'argent</h1></div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte formulaire-carte" style="margin:0; max-width:none;">
+    <form method="post">
+      {% csrf_token %}
+      {% for champ in formulaire.hidden_fields %}{{ champ }}{% endfor %}
+      {% for erreur in formulaire.non_field_errors %}<div class="message erreur">{{ erreur }}</div>{% endfor %}
+      {% for champ in formulaire.visible_fields %}
+        <div class="groupe-champ">
+          <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+          {{ champ }}
+          {% if champ.help_text %}<div class="aide">{{ champ.help_text }}</div>{% endif %}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton" style="width:100%;">Confirmer le retrait</button>
+    </form>
+  </div>
+
+  <div class="carte">
+    <h3 class="premier-titre">Frais de retrait</h3>
+    {% for regle in regles_frais %}
+      <div class="regle-frais">
+        <span>
+          {{ regle.libelle }}
+          {% if regle.taux_pourcentage %}
+            — {{ regle.taux_pourcentage }} %
+          {% endif %}
+          {% if regle.frais_fixe %}
+            + {{ regle.frais_fixe|floatformat:0|intcomma }} FCFA
+          {% endif %}
+        </span>
+        <span>
+          {% if regle.frais_minimum %}<span class="badge badge-info">min {{ regle.frais_minimum|floatformat:0|intcomma }}</span>{% endif %}
+          {% if regle.frais_maximum %}<span class="badge badge-info">max {{ regle.frais_maximum|floatformat:0|intcomma }}</span>{% endif %}
+        </span>
+      </div>
+      {% if regle.seuil_minimum %}
+        <p class="texte-petit" style="margin:4px 0 10px;">S'applique à partir de {{ regle.seuil_minimum|floatformat:0|intcomma }} FCFA.</p>
+      {% endif %}
+    {% empty %}
+      <p class="texte-petit" style="margin-bottom:0;">Aucun frais de retrait n'est actuellement configuré par la banque.</p>
+    {% endfor %}
+    <p class="texte-petit" style="margin-bottom:0; margin-top:12px;">
+      Le montant et les frais sont vérifiés par le serveur au moment de la confirmation.
+      Les plafonds journalier, hebdomadaire et mensuel du compte s'appliquent.
+    </p>
+  </div>
+</div>
+{% endblock %}

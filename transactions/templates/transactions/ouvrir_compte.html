@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Ouvrir un compte{% endblock %}
+{% block contenu %}
+<a href="{% url 'transactions:liste_comptes' %}" class="lien-retour">← Retour à mes comptes</a>
+<div class="page-titre"><h1>🏛️ Ouvrir un nouveau compte</h1></div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte formulaire-carte" style="margin:0; max-width:none;">
+    <h3 class="premier-titre">Nouveau compte</h3>
+    <p class="texte-petit">
+      Votre identité est vérifiée : vous pouvez ouvrir un compte supplémentaire.
+      Le compte est créé avec un solde nul, sans dépôt automatique.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      {% for erreur in formulaire.non_field_errors %}
+        <div class="message erreur">{{ erreur }}</div>
+      {% endfor %}
+      {% for champ in formulaire %}
+        <div class="groupe-champ">
+          <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+          {{ champ }}
+          {% if champ.help_text %}<div class="aide">{{ champ.help_text }}</div>{% endif %}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton" style="width:100%;">Ouvrir le compte</button>
+    </form>
+  </div>
+
+  <div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Types de compte</h3>
+      <p class="texte-petit" style="margin-top:0;">
+        <strong>Compte courant</strong> — opérations du quotidien, virements et paiements.<br>
+        <strong>Compte épargne</strong> — constitution d'une réserve, compatible avec les arrondis d'épargne.<br>
+        <strong>Compte professionnel</strong> — activité commerciale ou indépendante.
+      </p>
+    </div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 class="premier-titre">Plafonds appliqués</h3>
+      <div class="regle-frais"><span>Journalier</span><strong>{{ plafond_journalier|floatformat:0|intcomma }} FCFA</strong></div>
+      <div class="regle-frais"><span>Hebdomadaire</span><strong>{{ plafond_hebdomadaire|floatformat:0|intcomma }} FCFA</strong></div>
+      <div class="regle-frais"><span>Mensuel</span><strong>{{ plafond_mensuel|floatformat:0|intcomma }} FCFA</strong></div>
+      <p class="texte-petit" style="margin-bottom:0;">
+        Ces plafonds s'appliquent aux sorties du compte. Un administrateur peut les ajuster.
+      </p>
+    </div>
+    <div class="encart-info">
+      🪪 Dossier KYC :
+      {% if dossier %}
+        <strong>{{ dossier.get_statut_display }}</strong>
+      {% else %}
+        <strong>validé</strong> via la vérification d'identité.
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

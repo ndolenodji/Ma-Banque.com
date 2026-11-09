@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block titre %}Dépôts / Retraits{% endblock %}
+{% block contenu %}
+<div class="page-titre"><h1>💳 Dépôts / Retraits</h1></div>
+<div class="grille-cartes">
+  <a href="{% url 'transactions:deposer' %}" class="carte action-rapide" style="text-align:left;">
+    <div class="icone bg-vert" style="margin-bottom:12px;">⬆️</div>
+    <h3 style="margin:0 0 6px;">Déposer de l'argent</h3>
+    <p style="color:var(--gris-texte); font-size:0.88rem; margin:0;">Créditez un de vos comptes bancaires.</p>
+  </a>
+  <a href="{% url 'transactions:retirer' %}" class="carte action-rapide" style="text-align:left;">
+    <div class="icone bg-bleu" style="margin-bottom:12px;">⬇️</div>
+    <h3 style="margin:0 0 6px;">Retirer de l'argent</h3>
+    <p style="color:var(--gris-texte); font-size:0.88rem; margin:0;">Débitez un de vos comptes bancaires.</p>
+  </a>
+  <a href="{% url 'transactions:virements_programmes' %}" class="carte action-rapide" style="text-align:left;">
+    <div class="icone bg-orange" style="margin-bottom:12px;">🔁</div>
+    <h3 style="margin:0 0 6px;">Virements programmés</h3>
+    <p style="color:var(--gris-texte); font-size:0.88rem; margin:0;">Automatisez vos virements récurrents.</p>
+  </a>
+</div>
+{% endblock %}

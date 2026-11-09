@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Payer {{ demande.marchand.nom }}{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>Paiement marchand</h1>
+  <a href="{% url 'reseau:annuaire_marchands' %}" class="bouton bouton-secondaire">Marchands partenaires</a>
+</div>
+
+<div class="message info">
+  <strong>Démonstration :</strong> ce paiement débite votre compte de démonstration et crédite
+  le compte de règlement interne du marchand. Aucun réseau de cartes ni acquéreur externe
+  n'intervient.
+</div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte">
+    <div class="entete-suivi">
+      <div>
+        <div class="texte-petit">Marchand</div>
+        <h2 style="margin:4px 0;">{{ demande.marchand.nom }}</h2>
+        <div class="texte-petit">
+          {{ demande.marchand.categorie|default:"Activité non précisée" }}
+          {% if demande.marchand.ville %} — {{ demande.marchand.ville }}{% endif %}
+          — code {{ demande.marchand.code_marchand }}
+        </div>
+      </div>
+      <div>
+        {% if demande.statut == "PAYEE" %}<span class="badge badge-succes">Payée</span>
+        {% elif demande.statut == "EN_ATTENTE" %}<span class="badge badge-attente">En attente</span>
+        {% elif demande.statut == "ANNULEE" %}<span class="badge badge-echec">Annulée</span>
+        {% else %}<span class="badge badge-echec">Expirée</span>{% endif %}
+      </div>
+    </div>
+
+    <div class="regle-frais"><span>Montant demandé</span><strong style="font-size:1.15rem;">{{ demande.montant|floatformat:0|intcomma }} FCFA</strong></div>
+    <div class="regle-frais"><span>Objet</span><strong>{{ demande.description|default:"—" }}</strong></div>
+    <div class="regle-frais"><span>Valable jusqu'au</span><strong>{{ demande.date_expiration|date:"d/m/Y à H:i" }}</strong></div>
+
+    {% if paiement_termine %}
+      {% if demande.statut == "PAYEE" %}
+        <div class="message succes" style="margin-top:14px;">
+          {% if est_marchand %}
+            Paiement reçu de {{ demande.payeur.get_full_name|default:demande.payeur.username }} :
+            {{ demande.montant|floatformat:0|intcomma }} FCFA crédités sur votre compte de règlement.
+          {% else %}
+            Paiement accepté. Le marchand a été crédité et votre compte a été débité.
+            Merci pour votre achat.
+          {% endif %}
+        </div>
+        {% if demande.transaction %}
+          <div class="regle-frais"><span>Frais appliqués</span><strong>{{ demande.transaction.frais|floatformat:0|intcomma }} FCFA</strong></div>
+          <div class="regle-frais"><span>Débit total (si vous êtes le payeur)</span><strong>{{ demande.transaction.montant_total_debite|floatformat:0|intcomma }} FCFA</strong></div>
+          <a href="{% url 'transactions:telecharger_recu' demande.transaction.id %}" class="bouton bouton-secondaire" style="margin-top:10px;">📄 Reçu PDF</a>
+        {% endif %}
+        {% if est_marchand %}
+          <a href="{% url 'reseau:espace_marchand' %}" class="bouton" style="margin-top:10px;">Retour à mon espace marchand</a>
+        {% endif %}
+      {% elif demande.statut == "EXPIREE" %}
+        <div class="message attention" style="margin-top:14px;">
+          Cette demande a expiré et ne peut plus être payée. Demandez un nouveau QR code au marchand.
+        </div>
+        {% if est_marchand %}
+          <a href="{% url 'reseau:creer_demande' %}" class="bouton">Créer une nouvelle demande</a>
+        {% endif %}
+      {% else %}
+        <div class="message attention" style="margin-top:14px;">
+          Cette demande a été annulée et ne peut plus être payée.
+        </div>
+      {% endif %}
+    {% elif est_marchand %}
+      <div class="message attention" style="margin-top:14px;">
+        Vous ne pouvez pas payer votre propre demande marchand. Partagez plutôt le QR code
+        avec vos clients.
+      </div>
+      <a href="{% url 'reseau:detail_demande' demande.pk %}" class="bouton">Afficher le QR code</a>
+    {% else %}
+      {% if formulaire.non_field_errors %}
+        <div class="message erreur">{{ formulaire.non_field_errors|join:" " }}</div>
+      {% endif %}
+      <form method="post" style="margin-top:16px;">
+        {% csrf_token %}
+        <div class="groupe-champ">
+          <label for="{{ formulaire.compte_bancaire.id_for_label }}">{{ formulaire.compte_bancaire.label }}</label>
+          {{ formulaire.compte_bancaire }}
+          {% for erreur in formulaire.compte_bancaire.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+
+        <div class="carte" style="background:#fafbff; box-shadow:none; border:1px solid #eef1f8; margin:12px 0;">
+          <div class="regle-frais"><span>Montant marchand</span><strong>{{ demande.montant|floatformat:0|intcomma }} FCFA</strong></div>
+          <div class="regle-frais"><span>Frais bancaires</span><strong>{{ frais|floatformat:0|intcomma }} FCFA</strong></div>
+          <div class="regle-frais"><span>Total à débiter</span><strong>{{ total|floatformat:0|intcomma }} FCFA</strong></div>
+          {% if not regle %}
+            <p class="texte-petit" style="margin:6px 0 0;">Aucune règle de frais active : frais nuls actuellement.</p>
+          {% endif %}
+        </div>
+
+        <button type="submit" class="bouton" style="width:100%;">Payer {{ total|floatformat:0|intcomma }} FCFA</button>
+      </form>
+      <p class="texte-petit" style="margin-top:10px;">
+        En validant, vous autorisez le débit de votre compte dans l'application de démonstration.
+        Vérifiez le nom du marchand et le montant avant de confirmer.
+      </p>
+    {% endif %}
+  </div>
+
+  <aside class="carte">
+    <h3 class="premier-titre">Sécurité du paiement</h3>
+    <ul class="texte-petit" style="line-height:1.9; padding-left:18px;">
+      <li>Le montant et le marchand sont déterminés par la demande, pas par le formulaire.</li>
+      <li>La transaction est atomique et verrouillée pour empêcher un double paiement.</li>
+      <li>Une demande expirée ou annulée est automatiquement refusée.</li>
+      <li>Aucun numéro de carte, CVV ou code PIN n'est demandé ni stocké.</li>
+    </ul>
+    <div class="encart-info">
+      Le QR code ne contient pas de données bancaires : il encode uniquement un lien interne
+      vers cette page, protégé par un jeton aléatoire.
+    </div>
+    <p class="texte-petit" style="margin-top:12px;">
+      Un litige ? <a href="{% url 'support:creer_ticket' %}">Contactez le support</a> en joignant
+      la référence du paiement.
+    </p>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block titre %}Sessions et appareils{% endblock %}
+{% block contenu %}
+<a href="{% url 'comptes:parametres' %}" class="lien-retour">← Retour aux paramètres</a>
+<div class="page-titre">
+  <h1>💻 Sessions et appareils</h1>
+  <form method="post" action="{% url 'comptes:revoquer_autres_sessions' %}">
+    {% csrf_token %}
+    <button type="submit" class="bouton bouton-danger bouton-petit">Déconnecter les autres sessions</button>
+  </form>
+</div>
+
+<div class="carte" style="margin-bottom:16px;">
+  <h3 style="margin-top:0;">Sessions actives</h3>
+  <table class="tableau-donnees">
+    <thead><tr><th>Appareil</th><th>Adresse IP</th><th>Connexion</th><th>Dernière activité</th><th></th></tr></thead>
+    <tbody>
+    {% for session in sessions %}
+      <tr>
+        <td>
+          {{ session.appareil|default:"Appareil inconnu" }}
+          {% if session.cle_session == cle_courante %}<span class="badge badge-succes">Session actuelle</span>{% endif %}
+        </td>
+        <td>{{ session.adresse_ip|default:"—" }}</td>
+        <td>{{ session.date_connexion|date:"d/m/Y H:i" }}</td>
+        <td>{{ session.derniere_activite|date:"d/m/Y H:i" }}</td>
+        <td>
+          {% if session.cle_session != cle_courante %}
+          <form method="post" action="{% url 'comptes:revoquer_session' session.id %}">
+            {% csrf_token %}
+            <button type="submit" class="bouton bouton-petit bouton-danger">Révoquer</button>
+          </form>
+          {% else %}
+            <span style="font-size:0.8rem; color:var(--gris-texte);">En cours</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5">Aucune session active enregistrée.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="carte">
+  <h3 style="margin-top:0;">Historique de connexion</h3>
+  <table class="tableau-donnees">
+    <thead><tr><th>Date</th><th>Identifiant saisi</th><th>Appareil</th><th>IP</th><th>Résultat</th></tr></thead>
+    <tbody>
+    {% for tentative in historique %}
+      <tr>
+        <td>{{ tentative.horodatage|date:"d/m/Y H:i" }}</td>
+        <td>{{ tentative.identifiant }}</td>
+        <td>{{ tentative.appareil|default:"—" }}</td>
+        <td>{{ tentative.adresse_ip|default:"—" }}</td>
+        <td>
+          {% if tentative.reussie %}<span class="badge badge-succes">Réussie</span>
+          {% else %}<span class="badge badge-echec">Échouée</span>{% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5">Aucune connexion enregistrée.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

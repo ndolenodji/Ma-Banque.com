@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block titre %}Ouvrir un compte — Ma Banque{% endblock %}
+{% block contenu %}
+<div class="page-authentification">
+  <div class="carte" style="width:520px;">
+    <div class="logo-auth">🏦 Ouvrir un compte</div>
+    {% if messages %}
+      <div class="messages-flash">
+        {% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}
+      </div>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div class="groupe-champ">
+          <label>Prénom</label>
+          {{ formulaire.first_name }}
+        </div>
+        <div class="groupe-champ">
+          <label>Nom</label>
+          {{ formulaire.last_name }}
+        </div>
+      </div>
+      <div class="groupe-champ">
+        <label>Identifiant de connexion</label>
+        {{ formulaire.username }}
+        {% for erreur in formulaire.username.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+      </div>
+      <div class="groupe-champ">
+        <label>Adresse e-mail</label>
+        {{ formulaire.email }}
+        {% for erreur in formulaire.email.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+      </div>
+      <div class="groupe-champ">
+        <label>Téléphone (mobile money)</label>
+        {{ formulaire.telephone }}
+        <div class="aide">{{ formulaire.telephone.help_text }}</div>
+        {% for erreur in formulaire.telephone.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+      </div>
+      <div class="groupe-champ">
+        <label>Numéro de pièce d'identité</label>
+        {{ formulaire.numero_piece_identite }}
+      </div>
+      <div class="groupe-champ">
+        <label>Photo de la pièce d'identité (KYC simulé, optionnel)</label>
+        {{ formulaire.photo_piece_identite }}
+      </div>
+      <div class="groupe-champ">
+        <label>Mot de passe</label>
+        {{ formulaire.password1 }}
+        {% for erreur in formulaire.password1.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+      </div>
+      <div class="groupe-champ">
+        <label>Confirmer le mot de passe</label>
+        {{ formulaire.password2 }}
+        {% for erreur in formulaire.password2.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+      </div>
+      <button type="submit" class="bouton" style="width:100%;">Créer mon compte</button>
+    </form>
+    <p style="text-align:center; margin-top:16px; font-size:0.88rem;">
+      Déjà client ? <a href="{% url 'comptes:connexion' %}"><strong>Se connecter</strong></a>
+    </p>
+  </div>
+</div>
+{% endblock %}

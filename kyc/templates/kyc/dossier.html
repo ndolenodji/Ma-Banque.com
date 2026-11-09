@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block titre %}Vérification d'identité{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🪪 Vérification d'identité (KYC)</h1>
+  {% if dossier.statut == "APPROUVE" %}
+    <span class="badge badge-succes">Dossier approuvé</span>
+  {% elif dossier.statut == "EN_ATTENTE" %}
+    <span class="badge badge-attente">En cours de vérification</span>
+  {% elif dossier.statut == "REJETE" %}
+    <span class="badge badge-echec">Dossier rejeté</span>
+  {% else %}
+    <span class="badge badge-info">À compléter</span>
+  {% endif %}
+</div>
+
+{% if dossier.statut == "REJETE" and dossier.motif_rejet %}
+  <div class="message erreur" style="margin-bottom:16px;">
+    <strong>Motif du rejet :</strong> {{ dossier.motif_rejet }}<br>
+    Corrigez les éléments demandés puis soumettez à nouveau votre dossier.
+  </div>
+{% endif %}
+
+<div style="display:grid; grid-template-columns: 1.1fr .9fr; gap:16px; align-items:start;" class="kyc-grille">
+  <div class="carte">
+    <h2 style="font-size:1.05rem; margin-top:0;">Informations personnelles</h2>
+    <p style="color:var(--gris-texte); font-size:0.85rem;">
+      Ces informations sont utilisées uniquement pour vérifier votre identité. Les justificatifs sont stockés de façon privée.
+    </p>
+    <form method="post" action="{% url 'kyc:enregistrer_informations' %}">
+      {% csrf_token %}
+      {% for champ in formulaire_dossier %}
+        <div class="groupe-champ">
+          <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+          {{ champ }}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton bouton-secondaire" {% if dossier.statut == "APPROUVE" %}disabled{% endif %}>
+        Enregistrer les informations
+      </button>
+    </form>
+  </div>
+
+  <div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h2 style="font-size:1.05rem; margin-top:0;">Ajouter un justificatif</h2>
+      <form method="post" action="{% url 'kyc:ajouter_document' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        {% for champ in formulaire_document %}
+          <div class="groupe-champ">
+            <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+            {{ champ }}
+            {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+        <div class="groupe-champ aide">
+          Formats acceptés : JPG, PNG, WEBP ou PDF — 5 Mo maximum. La pièce d'identité recto ET verso est obligatoire.
+        </div>
+        <button type="submit" class="bouton" {% if dossier.statut == "APPROUVE" %}disabled{% endif %}>Téléverser</button>
+      </form>
+    </div>
+
+    <div class="carte">
+      <h2 style="font-size:1.05rem; margin-top:0;">Documents déposés</h2>
+      {% if documents %}
+        <ul style="list-style:none; padding:0; margin:0;">
+          {% for document in documents %}
+            <li style="padding:10px 0; border-top:1px solid #eef1f8; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <div>
+                <strong style="font-size:0.9rem;">{{ document.get_type_document_display }}</strong><br>
+                <small style="color:var(--gris-texte);">{{ document.date_ajout|date:"d/m/Y H:i" }} · {{ document.taille_octets|filesizeformat }}</small>
+                {% if document.statut == "VALIDE" %}<span class="badge badge-succes" style="margin-left:6px;">Validé</span>
+                {% elif document.statut == "REJETE" %}<span class="badge badge-echec" style="margin-left:6px;">Rejeté</span>
+                {% endif %}
+              </div>
+              <div style="display:flex; gap:6px;">
+                <a class="bouton bouton-petit bouton-secondaire" href="{% url 'kyc:telecharger_document' document.id %}">Ouvrir</a>
+                {% if dossier.statut != "APPROUVE" %}
+                <form method="post" action="{% url 'kyc:supprimer_document' document.id %}" onsubmit="return confirm('Retirer ce document ?');">
+                  {% csrf_token %}
+                  <button type="submit" class="bouton bouton-petit bouton-danger">Retirer</button>
+                </form>
+                {% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p style="color:var(--gris-texte); font-size:0.88rem;">Aucun document déposé pour le moment.</p>
+      {% endif %}
+
+      {% if dossier.statut != "APPROUVE" %}
+      <form method="post" action="{% url 'kyc:soumettre' %}" style="margin-top:14px;">
+        {% csrf_token %}
+        <button type="submit" class="bouton" style="width:100%;">Soumettre mon dossier pour vérification</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="carte" style="margin-top:16px;">
+  <h2 style="font-size:1.05rem; margin-top:0;">Historique du dossier</h2>
+  {% if historique %}
+    <table class="tableau-donnees">
+      <thead><tr><th>Date</th><th>Action</th><th>Acteur</th><th>Commentaire</th></tr></thead>
+      <tbody>
+        {% for etape in historique %}
+          <tr>
+            <td>{{ etape.date_action|date:"d/m/Y H:i" }}</td>
+            <td>{{ etape.get_action_display }}</td>
+            <td>{{ etape.acteur.get_full_name|default:etape.acteur.username|default:"Système" }}</td>
+            <td>{{ etape.commentaire }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p style="color:var(--gris-texte); font-size:0.88rem;">Aucune action enregistrée.</p>
+  {% endif %}
+</div>
+
+<style>
+@media (max-width: 900px) { .kyc-grille { grid-template-columns: 1fr !important; } }
+</style>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block titre %}Mon profil{% endblock %}
+{% block contenu %}
+<div class="page-titre"><h1>Mon profil</h1></div>
+<div class="carte formulaire-carte">
+  <p style="margin-top:0;">
+    Identité vérifiée (KYC) :
+    {% if user.identite_verifiee %}<span class="badge badge-succes">Oui</span>{% else %}<span class="badge badge-attente">En attente</span>{% endif %}
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    {% for champ in formulaire %}
+      <div class="groupe-champ">
+        <label>{{ champ.label }}</label>
+        {{ champ }}
+        {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+      </div>
+    {% endfor %}
+    <button type="submit" class="bouton">Enregistrer les modifications</button>
+  </form>
+</div>
+{% endblock %}

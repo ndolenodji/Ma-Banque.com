@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% load humanize static %}
+{% block titre %}Rapports d'activité{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>📈 Rapports d'activité</h1>
+  <div class="barre-boutons">
+    <a href="{% url 'administration:exporter_rapport_csv' %}?periode={{ cle_periode }}" class="bouton">⬇️ Export CSV</a>
+    <a href="{% url 'administration:tableau_de_bord' %}" class="bouton bouton-secondaire">Tableau de bord</a>
+  </div>
+</div>
+
+<div class="carte">
+  <form method="get" class="filtres-ligne">
+    <div class="champ">
+      <label for="periode">Période</label>
+      <select id="periode" name="periode" onchange="this.form.submit()">
+        <option value="7" {% if cle_periode == "7" %}selected{% endif %}>7 derniers jours</option>
+        <option value="30" {% if cle_periode == "30" %}selected{% endif %}>30 derniers jours</option>
+        <option value="90" {% if cle_periode == "90" %}selected{% endif %}>90 derniers jours</option>
+        <option value="365" {% if cle_periode == "365" %}selected{% endif %}>12 derniers mois</option>
+      </select>
+    </div>
+    <div class="actions-filtre">
+      <span class="texte-petit">Du {{ debut|date:"d/m/Y" }} au {{ fin|date:"d/m/Y" }} · données réelles de la base.</span>
+    </div>
+  </form>
+</div>
+
+<div class="grille-cartes">
+  <div class="carte carte-stat"><div class="icone bg-bleu">💱</div><div class="libelle">Transactions</div><div class="valeur">{{ nb_transactions|intcomma }}</div><div class="sous-texte">{{ nb_reussies|intcomma }} réussies · {{ taux_reussite }} %</div></div>
+  <div class="carte carte-stat"><div class="icone bg-vert">💰</div><div class="libelle">Volume réussi</div><div class="valeur">{{ volume_total|floatformat:0|intcomma }} FCFA</div></div>
+  <div class="carte carte-stat"><div class="icone bg-violet">🧾</div><div class="libelle">Frais perçus</div><div class="valeur">{{ frais_total|floatformat:0|intcomma }} FCFA</div></div>
+  <div class="carte carte-stat"><div class="icone bg-orange">📱</div><div class="libelle">Paiements mobiles</div><div class="valeur">{{ nb_mobiles|intcomma }}</div><div class="sous-texte">{{ nb_mobiles_reussis }} réussis · {{ volume_mobile|floatformat:0|intcomma }} FCFA</div></div>
+  <div class="carte carte-stat"><div class="icone bg-rouge">⚠️</div><div class="libelle">Échecs / annulations</div><div class="valeur">{{ nb_echecs|intcomma }}</div></div>
+</div>
+
+<div class="grille-graphiques">
+  <div class="carte">
+    <h3 class="premier-titre">Volume quotidien des opérations réussies</h3>
+    <div class="conteneur-graphique"><canvas id="graphiqueRapportVolume"></canvas></div>
+  </div>
+  <div class="carte">
+    <h3 class="premier-titre">Volume par type d'opération</h3>
+    <div class="conteneur-graphique"><canvas id="graphiqueRapportTypes"></canvas></div>
+  </div>
+</div>
+
+<div class="grille-graphiques">
+  <div class="carte">
+    <h3 class="premier-titre">Paiements mobiles réussis par opérateur</h3>
+    <div class="conteneur-graphique"><canvas id="graphiqueRapportOperateurs"></canvas></div>
+    <p class="texte-petit">Canal simulé : aucune transaction monétaire réelle chez un opérateur.</p>
+  </div>
+  <div class="carte">
+    <h3 class="premier-titre">Statuts des transactions</h3>
+    <div class="conteneur-graphique"><canvas id="graphiqueRapportStatuts"></canvas></div>
+  </div>
+</div>
+
+<div class="deux-colonnes">
+  <div class="carte">
+    <h3 class="premier-titre">Détail par type</h3>
+    <table class="tableau-donnees">
+      <thead><tr><th>Type</th><th>Nombre</th><th>Volume (FCFA)</th></tr></thead>
+      <tbody>
+      {% for ligne in par_type %}
+        <tr><td>{{ ligne.libelle }}</td><td>{{ ligne.nb|intcomma }}</td><td>{{ ligne.volume|floatformat:0|intcomma }}</td></tr>
+      {% empty %}<tr><td colspan="3">Aucune donnée.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="carte">
+    <h3 class="premier-titre">Détail par canal</h3>
+    <table class="tableau-donnees">
+      <thead><tr><th>Canal</th><th>Nombre</th><th>Volume (FCFA)</th></tr></thead>
+      <tbody>
+      {% for ligne in par_canal %}
+        <tr><td>{{ ligne.libelle }}</td><td>{{ ligne.nb|intcomma }}</td><td>{{ ligne.volume|floatformat:0|intcomma }}</td></tr>
+      {% empty %}<tr><td colspan="3">Aucune donnée.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="deux-colonnes">
+  <div class="carte">
+    <h3 class="premier-titre">Paiements mobiles par opérateur</h3>
+    <table class="tableau-donnees">
+      <thead><tr><th>Opérateur</th><th>Total</th><th>Réussis</th><th>Volume réussi</th></tr></thead>
+      <tbody>
+      {% for ligne in par_operateur %}
+        <tr><td>{{ ligne.libelle }}</td><td>{{ ligne.nb }}</td><td>{{ ligne.nb_reussi }}</td><td>{{ ligne.volume|floatformat:0|intcomma }} FCFA</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="carte">
+    <h3 class="premier-titre">Encours par type de compte</h3>
+    <table class="tableau-donnees">
+      <thead><tr><th>Type de compte</th><th>Nombre</th><th>Solde cumulé</th></tr></thead>
+      <tbody>
+      {% for ligne in repartition_comptes %}
+        <tr><td>{{ ligne.libelle }}</td><td>{{ ligne.nb }}</td><td>{{ ligne.solde|floatformat:0|intcomma }} FCFA</td></tr>
+      {% empty %}<tr><td colspan="3">Aucun compte.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="deux-colonnes">
+  <div class="carte">
+    <h3 class="premier-titre">Alertes fraude de la période</h3>
+    <table class="tableau-donnees">
+      <thead><tr><th>Niveau</th><th>Nombre</th></tr></thead>
+      <tbody>
+      {% for ligne in repartition_alertes %}
+        <tr><td>{{ ligne.libelle }}</td><td>{{ ligne.nb }}</td></tr>
+      {% empty %}<tr><td colspan="2">Aucune alerte sur la période.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="carte">
+    <h3 class="premier-titre">Dossiers KYC (état actuel)</h3>
+    <table class="tableau-donnees">
+      <thead><tr><th>Statut</th><th>Nombre</th></tr></thead>
+      <tbody>
+      {% for ligne in kyc_par_statut %}
+        <tr><td>{{ ligne.libelle }}</td><td>{{ ligne.nb }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/chart.umd.min.js' %}"></script>
+<script>
+(function () {
+  if (!window.Chart) return;
+  const nombre = (valeur) => new Intl.NumberFormat("fr-FR").format(valeur);
+  const couleurs = ["#1656d1", "#1fa870", "#f59e0b", "#8b5cf6", "#e5484d", "#0ea5a4", "#64748b", "#db2777"];
+
+  new Chart(document.getElementById("graphiqueRapportVolume"), {
+    type: "bar",
+    data: {
+      labels: {{ labels_jours|safe }},
+      datasets: [{
+        label: "Volume (FCFA)",
+        data: {{ volumes_par_jour|safe }},
+        backgroundColor: "rgba(22,86,209,0.7)",
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { callback: (v) => nombre(v) } } },
+    },
+  });
+
+  new Chart(document.getElementById("graphiqueRapportTypes"), {
+    type: "doughnut",
+    data: {
+      labels: [{% for ligne in par_type %}"{{ ligne.libelle|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+      datasets: [{
+        data: [{% for ligne in par_type %}{{ ligne.volume }}{% if not forloop.last %},{% endif %}{% endfor %}],
+        backgroundColor: couleurs,
+      }],
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } },
+  });
+
+  new Chart(document.getElementById("graphiqueRapportOperateurs"), {
+    type: "bar",
+    data: {
+      labels: [{% for ligne in par_operateur %}"{{ ligne.libelle|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+      datasets: [{
+        label: "Volume réussi (FCFA)",
+        data: [{% for ligne in par_operateur %}{{ ligne.volume }}{% if not forloop.last %},{% endif %}{% endfor %}],
+        backgroundColor: couleurs,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { callback: (v) => nombre(v) } } },
+    },
+  });
+
+  new Chart(document.getElementById("graphiqueRapportStatuts"), {
+    type: "pie",
+    data: {
+      labels: [{% for ligne in repartition_statuts %}"{{ ligne.libelle|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+      datasets: [{
+        data: [{% for ligne in repartition_statuts %}{{ ligne.nb }}{% if not forloop.last %},{% endif %}{% endfor %}],
+        backgroundColor: couleurs,
+      }],
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } },
+  });
+})();
+</script>
+{% endblock %}

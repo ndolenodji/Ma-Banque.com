@@ -1,0 +1,203 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block titre %}Ma Banque{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+  <div class="mise-en-page">
+
+    {% if user.is_authenticated %}
+    {# ================= VERSION WEB (barre latérale) — image 1 ================= #}
+    <aside class="barre-laterale chrome-web">
+      <div class="logo">
+        🏦 Ma Banque
+        <small>Votre confiance, notre priorité</small>
+      </div>
+      <nav>
+        {% if user.est_administrateur or user.est_agent %}
+          <a href="{% url 'administration:tableau_de_bord' %}" class="{% if request.resolver_match.url_name == 'tableau_de_bord' %}actif{% endif %}">📊 Tableau de bord</a>
+          <a href="{% url 'administration:supervision_clients' %}">👥 Clients</a>
+          <a href="{% url 'administration:supervision_transactions' %}">💱 Transactions</a>
+          <a href="{% url 'administration:rapports' %}">📈 Rapports</a>
+          {% if user.est_administrateur %}
+            <a href="{% url 'risques:alertes' %}">🚨 Alertes fraude</a>
+            <a href="{% url 'administration:journal_audit' %}">🗒️ Journal d'audit</a>
+            <a href="{% url 'administration:utilisateurs_internes' %}">🛂 Agents / Admins</a>
+          {% endif %}
+          <a href="{% url 'administration:kyc_dossiers' %}">🪪 Dossiers KYC</a>
+          {% if user.est_agent %}
+            <a href="{% url 'reseau:espace_agent' %}">🏪 Console agent</a>
+          {% endif %}
+          <a href="{% url 'support:mes_tickets' %}">🎫 Support</a>
+          <a href="/admin/">⚙️ Administration du Banque</a>
+        {% else %}
+          <a href="{% url 'comptes:tableau_de_bord' %}">🏠 Tableau de bord</a>
+          <a href="{% url 'transactions:liste_comptes' %}">🏛️ Mes comptes</a>
+          <a href="{% url 'transactions:virement' %}">🔁 Virements</a>
+          <a href="{% url 'transactions:virements_programmes' %}">🗓️ Virements programmés</a>
+          <a href="{% url 'transactions:depots_retraits' %}">💳 Dépôts / Retraits</a>
+          <a href="{% url 'paiement_mobile:recharger' %}">📱 Paiement mobile</a>
+          <a href="{% url 'paiement_mobile:mon_code_qr' %}">🔳 Mon code QR</a>
+          <a href="{% url 'cartes:mes_cartes' %}">💳 Mes cartes</a>
+          <a href="{% url 'epargne:tableau_epargne' %}">🐖 Épargne &amp; budgets</a>
+          <a href="{% url 'factures:tableau_factures' %}">🧾 Factures</a>
+          <a href="{% url 'devises:taux' %}">🌍 Devises</a>
+          <a href="{% url 'reseau:annuaire_agents' %}">🏪 Agents &amp; marchands</a>
+          <a href="{% url 'comptes:ussd' %}">📞 Simulateur USSD</a>
+          <a href="{% url 'support:faq' %}">🎫 Aide &amp; support</a>
+          <a href="{% url 'comptes:beneficiaires' %}">👥 Bénéficiaires</a>
+          <a href="{% url 'kyc:mon_dossier' %}">🪪 Vérification KYC</a>
+          <a href="{% url 'transactions:historique' %}">🕐 Historique</a>
+          <a href="{% url 'transactions:releves' %}">📄 Relevés</a>
+          <a href="{% url 'comptes:profil' %}">👤 Mon profil</a>
+          <a href="{% url 'comptes:parametres' %}">⚙️ Paramètres</a>
+
+          <div class="promo-mobile-money">
+            <div class="titre">📱 Paiement mobile</div>
+            <div class="sous-titre">Simple, rapide et sécurisé</div>
+            <div class="badges">
+              <span class="badge-operateur op-mtn">MTN</span>
+              <span class="badge-operateur op-orange">Orange</span>
+              <span class="badge-operateur op-airtel">Airtel</span>
+              <span class="badge-operateur op-moov">Moov</span>
+            </div>
+          </div>
+        {% endif %}
+      </nav>
+    </aside>
+    {% endif %}
+
+    <div class="contenu-principal">
+      {% if user.is_authenticated %}
+      {# ---- Bandeau supérieur web : recherche / notifications / profil ---- #}
+      <div class="entete-haute chrome-web">
+        <form class="barre-recherche" method="get" action="{% url 'transactions:historique' %}">
+          <span>🔎</span>
+          <input type="text" name="recherche" placeholder="Rechercher une opération, un bénéficiaire, un compte...">
+        </form>
+        <div class="entete-haute-droite">
+          <a href="{% url 'comptes:notifications' %}" class="cloche-notifications" id="cloche-web">
+            🔔
+            {% if notifications_non_lues %}<span class="pastille" id="pastille-notifications">{{ notifications_non_lues }}</span>{% endif %}
+          </a>
+          <div class="menu-profil" tabindex="0">
+            <div class="utilisateur-connecte">
+              <div class="avatar">{{ user.first_name|default:user.username|slice:":1"|upper }}</div>
+              <div>
+                <div style="font-weight:600; font-size:0.88rem;">Bonjour, {{ user.get_full_name|default:user.username }}</div>
+                <div style="font-size:0.72rem; color:var(--gris-texte);">{{ user.get_role_display }}</div>
+              </div>
+              <span style="color:var(--gris-texte);">▾</span>
+            </div>
+            <div class="menu-profil-liste">
+              <a href="{% url 'comptes:profil' %}">👤 Mon profil</a>
+              <a href="{% url 'kyc:mon_dossier' %}">🪪 Vérification KYC</a>
+              <a href="{% url 'comptes:parametres' %}">⚙️ Paramètres</a>
+              <a href="{% url 'comptes:sessions' %}">💻 Sessions et appareils</a>
+              <a href="{% url 'support:faq' %}">🎫 Aide &amp; support</a>
+              <a href="{% url 'comptes:deconnexion' %}">🚪 Déconnexion</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# ================= VERSION MOBILE (header) — image 2 ================= #}
+      <div class="chrome-mobile">
+        <div class="entete-mobile">
+          <div class="marque">
+            🏦 Ma Banque
+            <small>Votre confiance, notre priorité</small>
+          </div>
+          <div class="actions-entete">
+            <a href="{% url 'comptes:notifications' %}" class="cloche-notifications" id="cloche-mobile">
+              🔔
+              {% if notifications_non_lues %}<span class="pastille" id="pastille-notifications-mobile">{{ notifications_non_lues }}</span>{% endif %}
+            </a>
+            <a href="{% if user.est_administrateur or user.est_agent %}{% url 'administration:tableau_de_bord' %}{% else %}{% url 'comptes:profil' %}{% endif %}" class="avatar-mobile">
+              {{ user.first_name|default:user.username|slice:":1"|upper }}
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if messages %}
+      <div class="messages-flash" style="padding: 0 16px;">
+        {% for message in messages %}
+          <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% block contenu %}{% endblock %}
+      {% block contenu_mobile %}{% endblock %}
+
+      {% if user.is_authenticated and not user.est_administrateur and not user.est_agent %}
+      {# ---- Barre de navigation basse mobile — image 2 ---- #}
+      <nav class="barre-navigation-basse chrome-mobile">
+        <a href="{% url 'comptes:tableau_de_bord' %}" class="{% if request.resolver_match.view_name == 'comptes:tableau_de_bord' %}actif{% endif %}">
+          <span class="icone-nav">🏠</span>Accueil
+        </a>
+        <a href="{% url 'transactions:historique' %}" class="{% if request.resolver_match.view_name == 'transactions:historique' %}actif{% endif %}">
+          <span class="icone-nav">🕐</span>Transactions
+        </a>
+        <a href="{% url 'cartes:mes_cartes' %}" class="{% if request.resolver_match.app_name == 'cartes' %}actif{% endif %}">
+          <span class="icone-nav">💳</span>Carte
+        </a>
+        <a href="{% url 'transactions:virement' %}" class="{% if request.resolver_match.view_name == 'transactions:virement' %}actif{% endif %}">
+          <span class="icone-nav">🔁</span>Transferts
+        </a>
+        <a href="{% url 'comptes:profil' %}" class="{% if request.resolver_match.view_name == 'comptes:profil' %}actif{% endif %}">
+          <span class="icone-nav">👤</span>Profil
+        </a>
+      </nav>
+      {% endif %}
+    </div>
+  </div>
+  {% if user.is_authenticated %}
+  <script>
+    // Rafraîchissement périodique du compteur de notifications (fallback
+    // temps réel sans WebSocket/Redis). Aucun contenu utilisateur n'est
+    // injecté en HTML : seuls des nombres et des liens internes sont lus.
+    (function () {
+      const url = "{% url 'comptes:notifications_non_lues_json' %}";
+      function majPastille(id, clocheId, nombre) {
+        let el = document.getElementById(id);
+        if (!el && nombre > 0) {
+          const cloche = document.getElementById(clocheId);
+          if (!cloche) return;
+          el = document.createElement("span");
+          el.className = "pastille";
+          el.id = id;
+          cloche.appendChild(el);
+        }
+        if (el) {
+          el.textContent = nombre;
+          el.style.display = nombre > 0 ? "flex" : "none";
+        }
+      }
+      async function rafraichir() {
+        try {
+          const reponse = await fetch(url, {
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+            credentials: "same-origin",
+          });
+          if (!reponse.ok) return;
+          const donnees = await reponse.json();
+          majPastille("pastille-notifications", "cloche-web", donnees.nombre);
+          majPastille("pastille-notifications-mobile", "cloche-mobile", donnees.nombre);
+        } catch (erreur) {
+          /* réseau indisponible : le prochain cycle réessaiera */
+        }
+      }
+      setInterval(rafraichir, 30000);
+    })();
+  </script>
+  {% endif %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>

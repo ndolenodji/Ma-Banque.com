@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block titre %}Agents / Administrateurs{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🛂 Agents et administrateurs</h1>
+  <a href="/admin/comptes/utilisateur/add/" class="bouton">➕ Ajouter (admin Django)</a>
+</div>
+<div class="carte">
+  <table class="tableau-donnees">
+    <thead><tr><th>Nom complet</th><th>Identifiant</th><th>Rôle</th><th>Actif</th></tr></thead>
+    <tbody>
+    {% for u in utilisateurs_internes %}
+      <tr>
+        <td>{{ u.get_full_name|default:"-" }}</td>
+        <td>{{ u.username }}</td>
+        <td><span class="badge badge-info">{{ u.get_role_display }}</span></td>
+        <td>{% if u.is_active %}<span class="badge badge-succes">Oui</span>{% else %}<span class="badge badge-echec">Non</span>{% endif %}</td>
+      </tr>
+    {% empty %}<tr><td colspan="4">Aucun agent/administrateur.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

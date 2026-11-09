@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block titre %}Dossier KYC — {{ dossier.utilisateur.username }}{% endblock %}
+{% block contenu %}
+<a href="{% url 'administration:kyc_dossiers' %}" class="lien-retour">← Retour aux dossiers KYC</a>
+<div class="page-titre">
+  <h1>{{ dossier.utilisateur.get_full_name|default:dossier.utilisateur.username }}</h1>
+  {% if dossier.statut == "APPROUVE" %}<span class="badge badge-succes">Approuvé</span>
+  {% elif dossier.statut == "REJETE" %}<span class="badge badge-echec">Rejeté</span>
+  {% elif dossier.statut == "EN_ATTENTE" %}<span class="badge badge-attente">En attente</span>
+  {% else %}<span class="badge badge-info">Non soumis</span>{% endif %}
+</div>
+
+<div style="display:grid; grid-template-columns: 1.15fr .85fr; gap:16px; align-items:start;" class="kyc-admin-grille">
+  <div class="carte">
+    <h3 style="margin-top:0;">Informations déclarées</h3>
+    <p><strong>Identifiant :</strong> {{ dossier.utilisateur.username }} — <strong>Téléphone :</strong> {{ dossier.utilisateur.telephone }}</p>
+    <p><strong>E-mail :</strong> {{ dossier.utilisateur.email|default:"—" }}</p>
+    <p><strong>Pièce :</strong> {{ dossier.get_type_piece_display|default:"—" }} n° {{ dossier.numero_piece|default:"—" }}</p>
+    <p><strong>Naissance :</strong> {{ dossier.date_naissance|date:"d/m/Y"|default:"—" }} — <strong>Nationalité :</strong> {{ dossier.nationalite|default:"—" }}</p>
+    <p><strong>Adresse :</strong> {{ dossier.adresse|default:"—" }}</p>
+    <p><strong>Profession :</strong> {{ dossier.profession|default:"—" }}</p>
+    <p><strong>Soumis le :</strong> {{ dossier.date_soumission|date:"d/m/Y H:i"|default:"—" }}</p>
+    {% if dossier.traite_par %}<p><strong>Traité par :</strong> {{ dossier.traite_par }} le {{ dossier.date_traitement|date:"d/m/Y H:i" }}</p>{% endif %}
+    {% if dossier.motif_rejet %}<div class="message erreur"><strong>Motif :</strong> {{ dossier.motif_rejet }}</div>{% endif %}
+  </div>
+
+  <div class="carte">
+    <h3 style="margin-top:0;">Décision</h3>
+    {% if dossier.statut == "EN_ATTENTE" or dossier.statut == "REJETE" %}
+      <form method="post" action="{% url 'administration:kyc_decider' dossier.id %}" style="margin-bottom:14px;">
+        {% csrf_token %}
+        <input type="hidden" name="decision" value="APPROUVER">
+        <div class="groupe-champ">
+          <label>Commentaire (optionnel)</label>
+          <textarea name="commentaire" rows="2" placeholder="Vérifications effectuées..."></textarea>
+        </div>
+        <button type="submit" class="bouton" style="width:100%;">✅ Approuver le dossier</button>
+      </form>
+      <form method="post" action="{% url 'administration:kyc_decider' dossier.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="decision" value="REJETER">
+        <div class="groupe-champ">
+          <label>Motif du rejet (obligatoire)</label>
+          <textarea name="commentaire" rows="3" required placeholder="Ex. : pièce illisible, nom incohérent..."></textarea>
+        </div>
+        <button type="submit" class="bouton bouton-danger" style="width:100%;">Rejeter le dossier</button>
+      </form>
+    {% else %}
+      <p style="color:var(--gris-texte);">Ce dossier a déjà été traité ou n'est pas soumis.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="carte" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Justificatifs (stockage privé)</h3>
+  <table class="tableau-donnees">
+    <thead><tr><th>Type</th><th>Ajouté le</th><th>Taille</th><th>SHA-256</th><th>Statut</th><th></th></tr></thead>
+    <tbody>
+    {% for document in documents %}
+      <tr>
+        <td>{{ document.get_type_document_display }}</td>
+        <td>{{ document.date_ajout|date:"d/m/Y H:i" }}</td>
+        <td>{{ document.taille_octets|filesizeformat }}</td>
+        <td><small title="{{ document.empreinte_sha256 }}">{{ document.empreinte_sha256|slice:":16" }}…</small></td>
+        <td>
+          {% if document.statut == "VALIDE" %}<span class="badge badge-succes">Validé</span>
+          {% elif document.statut == "REJETE" %}<span class="badge badge-echec">Rejeté</span>
+          {% else %}<span class="badge badge-attente">En attente</span>{% endif %}
+        </td>
+        <td><a href="{% url 'kyc:telecharger_document' document.id %}" class="bouton bouton-petit bouton-secondaire">Ouvrir</a></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6">Aucun document.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="carte" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Historique</h3>
+  <table class="tableau-donnees">
+    <thead><tr><th>Date</th><th>Action</th><th>Acteur</th><th>Commentaire</th></tr></thead>
+    <tbody>
+    {% for etape in historique %}
+      <tr>
+        <td>{{ etape.date_action|date:"d/m/Y H:i" }}</td>
+        <td>{{ etape.get_action_display }}</td>
+        <td>{{ etape.acteur|default:"Système" }}</td>
+        <td>{{ etape.commentaire }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4">Aucune action.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+@media (max-width: 900px) { .kyc-admin-grille { grid-template-columns: 1fr !important; } }
+</style>
+{% endblock %}

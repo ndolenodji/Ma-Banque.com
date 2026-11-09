@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Demande de paiement marchand{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>Demande de paiement</h1>
+  <a href="{% url 'reseau:espace_marchand' %}" class="bouton bouton-secondaire">← Espace marchand</a>
+</div>
+
+<div class="message info">
+  <strong>Démonstration :</strong> le paiement associé est un transfert interne entre comptes de la maquette.
+  Aucun règlement par carte ou par acquéreur externe n'est effectué.
+</div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte">
+    <div class="entete-suivi">
+      <div>
+        <div class="texte-petit">Demande n° {{ demande.pk }} — {{ demande.marchand.nom }}</div>
+        <strong style="font-size:1.6rem;">{{ demande.montant|floatformat:0|intcomma }} FCFA</strong>
+        <div class="texte-petit">{{ demande.description|default:"Sans objet précisé" }}</div>
+      </div>
+      <div>
+        {% if demande.statut == "PAYEE" %}<span class="badge badge-succes">Payée</span>
+        {% elif demande.statut == "EN_ATTENTE" %}<span class="badge badge-attente">En attente</span>
+        {% elif demande.statut == "ANNULEE" %}<span class="badge badge-echec">Annulée</span>
+        {% else %}<span class="badge badge-echec">Expirée</span>{% endif %}
+      </div>
+    </div>
+
+    <div class="regle-frais"><span>Créée le</span><strong>{{ demande.date_creation|date:"d/m/Y à H:i" }}</strong></div>
+    <div class="regle-frais"><span>Expire le</span><strong>{{ demande.date_expiration|date:"d/m/Y à H:i" }}</strong></div>
+    {% if demande.date_paiement %}
+      <div class="regle-frais"><span>Payée le</span><strong>{{ demande.date_paiement|date:"d/m/Y à H:i" }}</strong></div>
+      <div class="regle-frais"><span>Payeur</span><strong>{{ demande.payeur.get_full_name|default:demande.payeur.username }}</strong></div>
+    {% endif %}
+
+    {% if demande.statut == "PAYEE" %}
+      <div class="message succes" style="margin-top:14px;">
+        Cette demande a été réglée. Le montant a été crédité sur le compte de règlement du marchand.
+      </div>
+      {% if demande.transaction %}
+        <a href="{% url 'transactions:telecharger_recu' demande.transaction.id %}" class="bouton bouton-secondaire">📄 Reçu PDF de la transaction</a>
+      {% endif %}
+    {% elif demande.statut == "EN_ATTENTE" %}
+      <div style="text-align:center; margin-top:16px;">
+        <img src="{% url 'reseau:qr_demande' demande.pk %}" alt="QR code de paiement pour la demande {{ demande.pk }}" class="image-qr">
+        <p class="texte-petit">
+          Ce QR code encode le lien de paiement sécurisé de cette demande. Il reste valable
+          jusqu'à l'expiration ou jusqu'au paiement.
+        </p>
+      </div>
+      <div class="groupe-champ" style="margin-top:12px;">
+        <label for="lien-paiement">Lien à transmettre au client</label>
+        <input type="text" id="lien-paiement" value="{{ lien_paiement }}" readonly>
+      </div>
+      <div class="barre-boutons">
+        <button type="button" class="bouton bouton-secondaire" id="copier-lien">📋 Copier le lien</button>
+        <a href="{{ lien_paiement }}" class="bouton">Ouvrir la page de paiement</a>
+      </div>
+      {% if demande.marchand.proprietaire_id == user.id %}
+        <form method="post" action="{% url 'reseau:annuler_demande' demande.pk %}" style="margin-top:14px;">
+          {% csrf_token %}
+          <button type="submit" class="bouton bouton-secondaire lien-danger">Annuler cette demande</button>
+        </form>
+      {% endif %}
+    {% else %}
+      <div class="message attention" style="margin-top:14px;">
+        Cette demande n'est plus payable. Créez une nouvelle demande si nécessaire.
+      </div>
+      {% if demande.marchand.proprietaire_id == user.id and demande.marchand.statut == "ACTIF" %}
+        <a href="{% url 'reseau:creer_demande' %}" class="bouton">Créer une nouvelle demande</a>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <aside class="carte">
+    <h3 class="premier-titre">Instructions</h3>
+    <ol class="texte-petit" style="padding-left:18px; line-height:1.9;">
+      <li>Présentez le QR code au client.</li>
+      <li>Le client se connecte et choisit son compte à débiter.</li>
+      <li>Le paiement est validé atomiquement : le marchand est crédité, le client débité.</li>
+      <li>La demande ne peut être payée qu'une seule fois.</li>
+    </ol>
+    <div class="encart-info">
+      Le QR code contient uniquement un lien interne signé par un jeton UUID.
+      Il n'expose ni identifiant de carte, ni CVV, ni code confidentiel.
+    </div>
+    <p class="texte-petit" style="margin-top:12px;">
+      Un problème ? <a href="{% url 'support:creer_ticket' %}">Ouvrez un ticket support</a>.
+    </p>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var bouton = document.getElementById("copier-lien");
+  var champ = document.getElementById("lien-paiement");
+  if (!bouton || !champ) return;
+  bouton.addEventListener("click", function () {
+    var lien = champ.value;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(lien).then(function () {
+        bouton.textContent = "✅ Lien copié";
+      });
+    } else {
+      champ.select();
+      document.execCommand("copy");
+      bouton.textContent = "✅ Lien copié";
+    }
+  });
+})();
+</script>
+{% endblock %}

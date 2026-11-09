@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titre %}Notifications{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🔔 Notifications {% if nb_non_lues %}<span class="badge badge-echec">{{ nb_non_lues }}</span>{% endif %}</h1>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <a href="{% url 'comptes:notifications' %}" class="bouton bouton-petit {% if filtre != 'non-lues' %}bouton-secondaire{% endif %}">Toutes</a>
+    <a href="{% url 'comptes:notifications' %}?filtre=non-lues" class="bouton bouton-petit {% if filtre == 'non-lues' %}bouton-secondaire{% endif %}">Non lues</a>
+    {% if nb_non_lues %}
+    <form method="post" action="{% url 'comptes:tout_marquer_lu' %}">
+      {% csrf_token %}
+      <button type="submit" class="bouton bouton-petit bouton-secondaire">Tout marquer comme lu</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="carte">
+  {% for notification in notifications %}
+    <div style="display:flex; gap:12px; padding:14px 0; border-top:1px solid #eef1f8; {% if not notification.lue %}background:#f8faff; margin:0 -8px; padding-left:8px; padding-right:8px; border-radius:8px;{% endif %}">
+      <div style="font-size:1.3rem;">
+        {% if notification.niveau == "CRITIQUE" %}🚨{% elif notification.niveau == "ATTENTION" %}⚠️{% elif notification.niveau == "SUCCES" %}✅{% else %}ℹ️{% endif %}
+      </div>
+      <div style="flex:1;">
+        <strong>{{ notification.titre }}</strong>
+        {% if not notification.lue %}<span class="badge badge-info" style="margin-left:6px;">Nouveau</span>{% endif %}
+        <div style="font-size:0.88rem; color:var(--gris-texte); margin-top:3px;">{{ notification.message }}</div>
+        <small style="color:var(--gris-texte);">{{ notification.date_creation|date:"d/m/Y H:i" }}</small>
+      </div>
+      <div>
+        <form method="post" action="{% url 'comptes:marquer_notification_lue' notification.id %}">
+          {% csrf_token %}
+          <button type="submit" class="bouton bouton-petit bouton-secondaire">
+            {% if notification.lien %}Ouvrir{% else %}{% if notification.lue %}Lu{% else %}Marquer lu{% endif %}{% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+  {% empty %}
+    <p style="color:var(--gris-texte);">Aucune notification pour le moment.</p>
+  {% endfor %}
+</div>
+{% endblock %}

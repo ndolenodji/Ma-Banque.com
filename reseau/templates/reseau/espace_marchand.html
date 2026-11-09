@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Espace marchand{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>🛍️ Espace marchand</h1>
+  {% if marchand and marchand.statut == "ACTIF" %}
+    <a href="{% url 'reseau:creer_demande' %}" class="bouton">➕ Nouvelle demande de paiement</a>
+  {% endif %}
+</div>
+
+{% if not marchand %}
+  <div class="grille-deux-colonnes">
+    <div class="carte">
+      <h2 style="margin-top:0;">Devenir marchand partenaire</h2>
+      <p>
+        Créez votre compte marchand pour générer des QR codes de paiement et encaisser
+        des règlements sur votre compte bancaire. Votre dossier est examiné par la banque
+        avant activation.
+      </p>
+      <h3>Conditions</h3>
+      <ul class="texte-petit" style="line-height:1.8; padding-left:18px;">
+        <li>Disposer d'un dossier KYC <strong>approuvé</strong>.</li>
+        <li>Détenir un compte bancaire actif pour recevoir les règlements.</li>
+        <li>Fournir le nom commercial, l'activité et la localisation de l'établissement.</li>
+      </ul>
+      <a href="{% url 'reseau:inscription_marchand' %}" class="bouton">Créer mon compte marchand</a>
+    </div>
+    <aside class="carte">
+      <h3 class="premier-titre">Comment fonctionne l'encaissement ?</h3>
+      <ol class="texte-petit" style="padding-left:18px; line-height:1.9;">
+        <li>Vous créez une demande pour un montant précis.</li>
+        <li>Un QR code et un lien sécurisé sont générés avec une date d'expiration.</li>
+        <li>Le client paie depuis son compte bancaire.</li>
+        <li>Le montant est crédité sur votre compte de règlement.</li>
+      </ol>
+      <div class="encart-info">
+        <strong>Simulation :</strong> le paiement est un transfert interne entre comptes de la maquette.
+        Aucun acquéreur de cartes ni terminal de paiement réel n'est connecté.
+      </div>
+    </aside>
+  </div>
+{% else %}
+  {% if marchand.statut == "EN_ATTENTE" %}
+    <div class="message attention">
+      Votre compte marchand <strong>{{ marchand.nom }}</strong> est en attente de validation par la banque.
+      Vous pourrez créer des demandes de paiement dès son activation.
+    </div>
+  {% elif marchand.statut == "SUSPENDU" %}
+    <div class="message erreur">
+      Votre compte marchand est suspendu. Contactez le support pour connaître le motif et les démarches.
+    </div>
+  {% else %}
+    <div class="message info">
+      Les paiements reçus sont réglés sur votre compte de règlement interne à la démonstration.
+      Un encaissement par carte ou par un acquéreur externe n'est pas simulé.
+    </div>
+  {% endif %}
+
+  <div class="grille-cartes">
+    <div class="carte carte-stat">
+      <div class="icone bg-vert">💰</div>
+      <div class="valeur">{{ statistiques.encaisse|floatformat:0|intcomma }} FCFA</div>
+      <div class="libelle">Total encaissé (demandes payées)</div>
+    </div>
+    <div class="carte carte-stat">
+      <div class="icone bg-bleu">✅</div>
+      <div class="valeur">{{ statistiques.nb_payees }}</div>
+      <div class="libelle">Demandes payées</div>
+    </div>
+    <div class="carte carte-stat">
+      <div class="icone bg-orange">⏳</div>
+      <div class="valeur">{{ statistiques.nb_attente }}</div>
+      <div class="libelle">Demandes en attente</div>
+    </div>
+    <div class="carte carte-stat">
+      <div class="icone bg-violet">🏦</div>
+      <div class="valeur">{{ marchand.compte_reglement.numero_compte }}</div>
+      <div class="libelle">Compte de règlement ({{ marchand.compte_reglement.code_devise }})</div>
+    </div>
+  </div>
+
+  <div class="carte" style="margin-bottom:16px;">
+    <div class="barre-boutons" style="justify-content:space-between;">
+      <div>
+        <strong>{{ marchand.nom }}</strong>
+        <span class="badge {% if marchand.statut == 'ACTIF' %}badge-succes{% elif marchand.statut == 'SUSPENDU' %}badge-echec{% else %}badge-attente{% endif %}">
+          {{ marchand.get_statut_display }}
+        </span>
+        <div class="texte-petit">Code marchand : {{ marchand.code_marchand }}</div>
+      </div>
+      <div>
+        <a href="{% url 'reseau:annuaire_marchands' %}" class="bouton bouton-secondaire">Annuaire des marchands</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="carte">
+    <h3 style="margin-top:0;">Dernières demandes de paiement</h3>
+    <div class="tableau-defilement">
+      <table class="tableau-donnees">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Montant</th>
+            <th>Objet</th>
+            <th>Expiration</th>
+            <th>Statut</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for demande in demandes %}
+            <tr>
+              <td>{{ demande.date_creation|date:"d/m/Y H:i" }}</td>
+              <td>{{ demande.montant|floatformat:0|intcomma }} FCFA</td>
+              <td>{{ demande.description|default:"—" }}</td>
+              <td>{{ demande.date_expiration|date:"d/m/Y H:i" }}</td>
+              <td>
+                {% if demande.statut == "PAYEE" %}<span class="badge badge-succes">Payée</span>
+                {% elif demande.statut == "EN_ATTENTE" %}{% if demande.est_expiree %}<span class="badge badge-echec">Expirée</span>{% else %}<span class="badge badge-attente">En attente</span>{% endif %}
+                {% elif demande.statut == "ANNULEE" %}<span class="badge badge-echec">Annulée</span>
+                {% else %}<span class="badge badge-echec">Expirée</span>{% endif %}
+              </td>
+              <td>
+                <div class="barre-boutons">
+                  <a href="{% url 'reseau:detail_demande' demande.pk %}" class="lien-inline">Détails →</a>
+                  {% if demande.statut == "EN_ATTENTE" and not demande.est_expiree %}
+                    <a href="{% url 'reseau:qr_demande' demande.pk %}" target="_blank" rel="noopener" class="lien-inline">QR</a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6">
+                Aucune demande pour le moment.
+                {% if marchand.statut == "ACTIF" %}
+                  <a href="{% url 'reseau:creer_demande' %}">Créer la première demande</a>.
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

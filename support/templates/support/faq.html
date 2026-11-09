@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block titre %}Aide et FAQ{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>❓ Aide et questions fréquentes</h1>
+  <div class="barre-boutons">
+    <a href="{% url 'support:mes_tickets' %}" class="bouton bouton-secondaire">🎫 Mes tickets</a>
+    <a href="{% url 'support:creer_ticket' %}" class="bouton">➕ Ouvrir un ticket</a>
+  </div>
+</div>
+
+<div class="carte" style="margin-bottom:16px;">
+  <form method="get" class="barre-boutons" style="align-items:flex-end;">
+    <div class="groupe-champ" style="margin:0; min-width:250px; flex:1;">
+      <label for="recherche-faq">Rechercher une question</label>
+      <input type="text" id="recherche-faq" name="q" value="{{ recherche }}" placeholder="Mot-clé, opération, sécurité…">
+    </div>
+    <div class="groupe-champ" style="margin:0; min-width:200px;">
+      <label for="categorie-faq">Catégorie</label>
+      <select name="categorie" id="categorie-faq">
+        <option value="">Toutes les catégories</option>
+        {% for code, libelle in categories %}
+          <option value="{{ code }}" {% if categorie == code %}selected{% endif %}>{{ libelle }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="bouton">Rechercher</button>
+    <a href="{% url 'support:faq' %}" class="bouton bouton-secondaire">Réinitialiser</a>
+  </form>
+</div>
+
+{% if groupes %}
+  {% for groupe in groupes %}
+    <div class="carte" style="margin-bottom:16px;">
+      <h2 style="margin-top:0;">{{ groupe.libelle }}</h2>
+      {% for article in groupe.articles %}
+        <details class="faq-article">
+          <summary>{{ article.question }}</summary>
+          <div class="faq-reponse">{{ article.reponse|linebreaks }}</div>
+        </details>
+      {% endfor %}
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="carte">
+    <p>Aucun article ne correspond à votre recherche.</p>
+    <p>
+      Vous pouvez <a href="{% url 'support:creer_ticket' %}">ouvrir un ticket</a> pour joindre le support.
+    </p>
+  </div>
+{% endif %}
+
+<div class="carte">
+  <h3 style="margin-top:0;">Vous ne trouvez pas votre réponse ?</h3>
+  <p class="texte-petit">
+    Le support traite les demandes relatives aux comptes, transactions, cartes, paiements mobiles,
+    vérifications KYC et frais. Ne transmettez jamais votre mot de passe, votre code PIN ou un code de
+    double authentification dans un ticket.
+  </p>
+  <a href="{% url 'support:creer_ticket' %}" class="bouton">Contacter le support</a>
+</div>
+{% endblock %}

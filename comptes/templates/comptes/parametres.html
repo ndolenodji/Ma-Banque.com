@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block titre %}Paramètres{% endblock %}
+{% block contenu %}
+<div class="page-titre"><h1>⚙️ Paramètres de sécurité</h1></div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;" class="parametres-grille">
+  <div class="carte">
+    <h3 style="margin-top:0;">Changer mon mot de passe</h3>
+    <form method="post">
+      {% csrf_token %}
+      {% for champ in formulaire %}
+        <div class="groupe-champ">
+          <label>{{ champ.label }}</label>
+          {{ champ }}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton">Mettre à jour</button>
+    </form>
+  </div>
+
+  <div>
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 style="margin-top:0;">Double authentification (2FA)</h3>
+      {% if user.double_authentification_active %}
+        <p><span class="badge badge-succes">Activée</span> depuis le {{ user.date_activation_2fa|date:"d/m/Y" }}.</p>
+        <p style="font-size:0.85rem; color:var(--gris-texte);">
+          Codes de secours restants : <strong>{{ codes_restants }}</strong>.
+        </p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <a href="{% url 'comptes:parametres' %}" class="bouton bouton-petit bouton-secondaire" onclick="document.getElementById('bloc-regenerer').style.display='block'; return false;">Régénérer les codes</a>
+          <a href="#desactiver-2fa" class="bouton bouton-petit bouton-danger" onclick="document.getElementById('bloc-desactiver').style.display='block'; return false;">Désactiver</a>
+        </div>
+        <form id="bloc-regenerer" method="post" action="{% url 'comptes:regenerer_codes_secours' %}" style="display:none; margin-top:12px;">
+          {% csrf_token %}
+          <div class="groupe-champ"><label>Mot de passe</label><input type="password" name="mot_de_passe" required></div>
+          <div class="groupe-champ"><label>Code 2FA actuel</label><input type="text" name="code" inputmode="numeric" required></div>
+          <button type="submit" class="bouton bouton-petit bouton-secondaire">Générer de nouveaux codes</button>
+        </form>
+        <form id="bloc-desactiver" method="post" action="{% url 'comptes:desactiver_2fa' %}" style="display:none; margin-top:12px;">
+          {% csrf_token %}
+          <div class="groupe-champ"><label>Mot de passe</label><input type="password" name="mot_de_passe" required></div>
+          <div class="groupe-champ"><label>Code 2FA ou code de secours</label><input type="text" name="code" required></div>
+          <button type="submit" class="bouton bouton-petit bouton-danger">Confirmer la désactivation</button>
+        </form>
+      {% else %}
+        <p><span class="badge badge-attente">Non activée</span></p>
+        <p style="font-size:0.85rem; color:var(--gris-texte);">
+          Protégez votre compte avec un code à usage unique généré par une application d'authentification.
+        </p>
+        <a href="{% url 'comptes:activer_2fa' %}" class="bouton">Activer la double authentification</a>
+      {% endif %}
+    </div>
+
+    <div class="carte" style="margin-bottom:16px;">
+      <h3 style="margin-top:0;">Sessions et appareils</h3>
+      <p style="font-size:0.88rem; color:var(--gris-texte);">
+        {{ sessions_actives }} session(s) active(s). Consultez vos appareils connectés et révoquez toute session suspecte.
+      </p>
+      <a href="{% url 'comptes:sessions' %}" class="bouton bouton-secondaire">Gérer mes sessions</a>
+    </div>
+
+    <div class="carte">
+      <h3 style="margin-top:0;">Vérification d'identité</h3>
+      <p style="font-size:0.88rem; color:var(--gris-texte);">
+        Déposez vos justificatifs dans l'espace sécurisé KYC. Les documents ne sont jamais publics.
+      </p>
+      <a href="{% url 'kyc:mon_dossier' %}" class="bouton bouton-secondaire">Ouvrir mon dossier KYC</a>
+    </div>
+  </div>
+</div>
+
+<style>
+@media (max-width: 900px) { .parametres-grille { grid-template-columns: 1fr !important; } }
+</style>
+{% endblock %}

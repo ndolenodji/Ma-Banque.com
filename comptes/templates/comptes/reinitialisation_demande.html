@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block titre %}Mot de passe oublié{% endblock %}
+{% block contenu %}
+<div class="page-authentification">
+  <div class="carte">
+    <div class="logo-auth">🔑 Mot de passe oublié</div>
+    {% if messages %}
+      <div class="messages-flash">
+        {% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}
+      </div>
+    {% endif %}
+    <form method="post" class="formulaire-carte">
+      {% csrf_token %}
+      <div class="groupe-champ">
+        <label>Votre adresse e-mail</label>
+        {{ formulaire.email }}
+        {% for erreur in formulaire.email.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+      </div>
+      <button type="submit" class="bouton" style="width:100%;">Envoyer le lien de réinitialisation</button>
+    </form>
+
+    <p style="text-align:center; margin-top:16px; font-size:0.8rem; color:var(--gris-texte);">
+      Pour des raisons de sécurité, nous ne confirmons pas si une adresse est enregistrée.
+      Le lien envoyé expire après 60 minutes.
+    </p>
+
+    <p style="text-align:center; margin-top:16px; font-size:0.88rem;">
+      <a href="{% url 'comptes:connexion' %}">← Retour à la connexion</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

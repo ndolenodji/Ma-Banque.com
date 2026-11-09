@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block titre %}Retrait vers mobile money{% endblock %}
+{% block contenu %}
+<div class="page-titre">
+  <h1>💸 Retrait vers mobile money</h1>
+  <div class="barre-boutons">
+    <a href="{% url 'paiement_mobile:recharger' %}" class="bouton bouton-secondaire">📱 Recharger mon compte</a>
+    <a href="{% url 'paiement_mobile:historique' %}" class="bouton bouton-secondaire">🧾 Historique</a>
+  </div>
+</div>
+
+<div class="message info">
+  <strong>Démonstration :</strong> le transfert vers le portefeuille mobile est simulé.
+  Le compte bancaire est réellement débité dans l'application, puis remboursé si l'opérateur échoue.
+</div>
+
+<div class="grille-deux-colonnes">
+  <div class="carte formulaire-carte" style="max-width:none; margin:0;">
+    <h3 class="premier-titre">Demande de retrait (cash-out)</h3>
+    <p style="color:var(--gris-texte); font-size:0.88rem;">
+      Le montant et les frais sont réservés sur votre compte dès l'envoi de la demande.
+      Le débit devient définitif lorsque l'opérateur confirme la réussite de l'opération.
+    </p>
+
+    {% if formulaire.non_field_errors %}
+      <div class="message erreur">{{ formulaire.non_field_errors|join:" " }}</div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="cle_idempotence" value="{{ cle_idempotence }}">
+      {% for champ in formulaire %}
+        <div class="groupe-champ">
+          <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+          {{ champ }}
+          {% for erreur in champ.errors %}<div class="erreurs-champ">{{ erreur }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="bouton" style="width:100%;">Confirmer le retrait mobile</button>
+    </form>
+  </div>
+
+  <aside class="carte">
+    <h3 class="premier-titre">Frais de l'opération</h3>
+    {% if regle_frais %}
+      <div class="regle-frais"><span>Libellé</span><strong>{{ regle_frais.libelle }}</strong></div>
+      {% if regle_frais.frais_fixe %}
+        <div class="regle-frais"><span>Frais fixes</span><strong>{{ regle_frais.frais_fixe|floatformat:0|intcomma }} FCFA</strong></div>
+      {% endif %}
+      {% if regle_frais.taux_pourcentage %}
+        <div class="regle-frais"><span>Taux</span><strong>{{ regle_frais.taux_pourcentage }} %</strong></div>
+      {% endif %}
+      {% if regle_frais.seuil_minimum %}
+        <div class="regle-frais"><span>Applicable à partir de</span><strong>{{ regle_frais.seuil_minimum|floatformat:0|intcomma }} FCFA</strong></div>
+      {% endif %}
+      {% if regle_frais.frais_minimum %}
+        <div class="regle-frais"><span>Frais minimum</span><strong>{{ regle_frais.frais_minimum|floatformat:0|intcomma }} FCFA</strong></div>
+      {% endif %}
+      {% if regle_frais.frais_maximum is not None %}
+        <div class="regle-frais"><span>Frais maximum</span><strong>{{ regle_frais.frais_maximum|floatformat:0|intcomma }} FCFA</strong></div>
+      {% endif %}
+      <p class="texte-petit" style="margin-top:8px;">
+        Le montant exact des frais est calculé et affiché sur la page de suivi après validation.
+        Cette grille est administrable : elle peut évoluer sans modification du code.
+      </p>
+    {% else %}
+      <p class="texte-petit">
+        Aucune règle de frais active n'est configurée pour les opérations mobiles :
+        aucun frais n'est appliqué actuellement. Un administrateur peut en ajouter une.
+      </p>
+    {% endif %}
+
+    <h3>Opérateurs</h3>
+    <div class="liste-operateurs">
+      {% for info in operateurs %}
+        <div class="operateur-ligne">
+          <div>
+            <strong>{{ info.libelle }}</strong>
+            {% if info.disponible_tchad %}
+              <span class="badge badge-succes">Tchad</span>
+            {% else %}
+              <span class="badge badge-attente">Démo</span>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="encart-info">
+      En cas d'échec ou d'indisponibilité de l'opérateur, le débit est remboursé automatiquement
+      et de façon idempotente sur le compte bancaire.
+    </div>
+  </aside>
+</div>
+{% endblock %}
